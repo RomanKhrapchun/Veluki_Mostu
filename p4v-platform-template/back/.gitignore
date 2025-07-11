@@ -1,0 +1,54 @@
+# Залежності
+/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Змінні середовища
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*
+
+# Логи
+logs
+*.log
+
+# Тимчасові файли
+tmp/
+temp/
+
+#Не ігнорувати документи-шаблони для генерації, але ігнорувати усе решта
+files/*
+!files/*.docx
+utils/constants*
+# Кеш
+.npm
+.eslintcache
+.node_repl_history
+
+# Системні файли
+.DS_Store
+Thumbs.db
+
+# IDE та редактори
+/.idea
+/.vscode
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+*.swp
+*.swo
+
+# Файли тестування та покриття
+/coverage
+/.nyc_output
+
+# Файли збірки
+/dist
+/build

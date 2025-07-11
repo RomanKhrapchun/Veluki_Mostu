@@ -1,0 +1,28 @@
+.page-home {
+    flex: 1 0 0;
+    padding: 200px 0 20px;
+}
+
+.page-home .page-home__container{
+    height: 100%;
+}
+
+.page-home__container {
+    margin: 0 auto;
+    padding: 0 var(--mg);
+}
+
+.page-home__inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    text-align: center;
+}
+
+.page-home .title--main{
+    margin-bottom: 20px;
+}
+
+.page-home__copyright {
+    margin-top: auto;
+}

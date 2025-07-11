@@ -1,0 +1,113 @@
+.header__top {
+    background-color: var(--white-bg);
+    border-bottom: 6px solid var(--blue);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+}
+
+.header__container {
+    margin: 0 auto;
+    padding: 0 var(--mg);
+}
+
+.header__top-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--mg-sm) 0;
+}
+
+.header__logo {
+    user-select: none;
+    display: flex;
+    align-items: center;
+    column-gap: var(--mg-sm);
+}
+
+.header__logo-img {
+    width: 60px;
+    height: 60px;
+}
+
+.header__logo-text {
+    color: var(--black);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.header__top-burger-btn {
+    display: block;
+    width: 35px;
+    height: 30px;
+    background-color: transparent;
+    border: none;
+    transition: var(--transition);
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    z-index: 10;
+}
+
+.header__top-burger-btn span {
+    display: block;
+    width: 100%;
+    height: 4px;
+    background-color: var(--black);
+    border-radius: 4px;
+    transition: var(--transition);
+    position: absolute;
+    left: 0;
+}
+
+.header__top-burger-btn span:nth-of-type(1) {
+    top: 0;
+}
+
+.header__top-burger-btn span:nth-of-type(2) {
+    top: 13px;
+}
+
+.header__top-burger-btn span:nth-of-type(3) {
+    bottom: 0;
+}
+
+.header__top-burger-btn:hover span,
+.header__top-burger-btn:focus span {
+    background-color: var(--blue);
+}
+
+.header__top-closing-field {
+    background-color: rgba(37, 37, 37, 0.25);
+    opacity: 0;
+    transition: var(--transition);
+    visibility: hidden;
+    cursor: pointer;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+}
+
+.header__top-burger-btn--active span:nth-of-type(1) {
+    transform: translateY(12px) rotate(-45deg);
+}
+
+.header__top-burger-btn--active span:nth-of-type(2) {
+    transform: translate3d(200%, 0, 0);
+}
+
+.header__top-burger-btn--active span:nth-of-type(3) {
+    transform: translateY(-14px) rotate(45deg);
+}
+
+.header__top-closing-field--active {
+    opacity: 1;
+    visibility: visible;
+}

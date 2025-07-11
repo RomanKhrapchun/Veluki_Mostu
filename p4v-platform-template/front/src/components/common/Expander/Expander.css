@@ -1,0 +1,45 @@
+.expander {
+    width: fit-content;
+    max-width: 300px;
+    position: relative;
+}
+
+.btn.expander__trigger {
+    width: 100%;
+    padding-right: 40px;
+    position: relative;
+}
+
+.expander__trigger::after {
+    content: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg' fill='%23fcfcfc'%3E%3Cpath d='M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-4.293-1.707a1 1 0 00-1.414 0L10 10.586 7.707 8.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 000-1.414z' /%3E%3C/svg%3E");
+    width: 18px;
+    height: 18px;
+    transition: var(--transition);
+    position: absolute;
+    top: 12px;
+    right: 8px;
+    z-index: 2;
+}
+
+.expander__trigger.expander--active::after {
+    transform: scale(1, -1);
+}
+
+.expander__list-wrapper {
+    height: 0;
+    transition: var(--transition);
+    overflow: hidden;
+    visibility: hidden;
+}
+
+.expander__list {
+    padding-left: var(--mg-sm);
+    border-left: 6px solid var(--blue);
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+}
+
+.expander__item {
+    width: 100%;
+    margin-bottom: 5px;
+}

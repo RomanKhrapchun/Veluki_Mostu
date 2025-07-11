@@ -1,0 +1,308 @@
+
+.grouped-service-selector {
+    position: relative;
+    width: 100%;
+}
+
+/* Поле вибору */
+.selector-input {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 40px;
+}
+
+.selector-input:hover {
+    border-color: #40a9ff;
+}
+
+.selector-input.open {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.selector-input.error {
+    border-color: #ff4d4f;
+}
+
+.selector-input.error:hover {
+    border-color: #ff7875;
+}
+
+.selector-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.selector-text.placeholder {
+    color: #bfbfbf;
+}
+
+.selector-text.selected {
+    color: #262626;
+}
+
+.selector-arrow {
+    font-size: 12px;
+    color: #8c8c8c;
+    transition: transform 0.2s ease;
+}
+
+.selector-arrow.up {
+    transform: rotate(180deg);
+}
+
+/* Dropdown */
+.selector-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    max-height: 400px;
+    overflow: hidden;
+}
+
+.dropdown-loading {
+    padding: 20px;
+    text-align: center;
+    color: #8c8c8c;
+}
+
+.dropdown-content {
+    display: flex;
+    height: 400px;
+}
+
+/* Панель виконавців (ліва) */
+.executors-panel {
+    width: 250px;
+    border-right: 1px solid #f0f0f0;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-header {
+    padding: 12px 16px;
+    font-weight: 500;
+    font-size: 14px;
+    color: #262626;
+    border-bottom: 1px solid #f0f0f0;
+    background: #f5f5f5;
+}
+
+.executors-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.executor-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.executor-item:hover {
+    background: #e6f4ff;
+}
+
+.executor-item.selected {
+    background: #1890ff;
+    color: white;
+}
+
+.executor-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.executor-count {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+/* Панель послуг (права) */
+.services-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+}
+
+.services-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+}
+
+.service-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.service-item:hover {
+    background: #f0f8ff;
+}
+
+.service-item.selected {
+    background: #e6f4ff;
+    border-left: 3px solid #1890ff;
+}
+
+.service-name {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    line-height: 1.4;
+    color: #262626;
+}
+
+.service-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.service-code {
+    font-size: 12px;
+    color: #8c8c8c;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.service-price {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1890ff;
+}
+
+.no-services, .select-executor-message {
+    padding: 20px;
+    text-align: center;
+    color: #8c8c8c;
+    font-style: italic;
+}
+
+/* Інформація про вибрану послугу */
+.selected-service-info {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #f0f8ff;
+    border: 1px solid #d6e4ff;
+    border-radius: 4px;
+}
+
+.service-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.service-code-summary,
+.service-price-summary,
+.service-executor-summary {
+    color: #1890ff;
+}
+
+.service-price-summary {
+    font-weight: 500;
+}
+
+/* Скролбари */
+.executors-list::-webkit-scrollbar,
+.services-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.executors-list::-webkit-scrollbar-track,
+.services-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.executors-list::-webkit-scrollbar-thumb,
+.services-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.executors-list::-webkit-scrollbar-thumb:hover,
+.services-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Адаптивність */
+@media (max-width: 768px) {
+    .selector-dropdown {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90vw;
+        max-width: 600px;
+        height: 70vh;
+        margin-top: 0;
+    }
+
+    .dropdown-content {
+        height: 100%;
+    }
+
+    .executors-panel {
+        width: 200px;
+    }
+
+    .executor-name {
+        font-size: 12px;
+    }
+
+    .service-name {
+        font-size: 13px;
+    }
+
+    .service-details {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .executors-panel {
+        width: 150px;
+    }
+
+    .executor-item,
+    .service-item {
+        padding: 10px 12px;
+    }
+
+    .executor-name {
+        font-size: 11px;
+    }
+
+    .service-name {
+        font-size: 12px;
+    }
+}

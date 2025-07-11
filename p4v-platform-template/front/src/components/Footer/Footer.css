@@ -1,0 +1,15 @@
+.footer {
+    border-top: 2px solid var(--grey-border);
+    border-top-right-radius: 2px;
+    border-top-left-radius: 2px;
+}
+
+.footer__inner {
+    padding: var(--mg);
+    text-align: center;
+}
+
+.footer__container {
+    margin: 0 auto;
+    padding: 0 var(--mg);
+}

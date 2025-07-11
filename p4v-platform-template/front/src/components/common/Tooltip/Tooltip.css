@@ -1,0 +1,53 @@
+#tooltip {
+    background: var(--white);
+    color: var(--black);
+    padding: 4px 6px;
+    font-size: 12px;
+    border-radius: 12px;
+    border: 2px solid var(--grey-border);
+    display: none;
+    max-width: 300px;
+    box-shadow: var(--shadow);
+    z-index: 9999;
+}
+
+#tooltip[data-show] {
+    display: block;
+}
+
+#arrow,
+#arrow::before {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: inherit;
+}
+
+#arrow {
+    visibility: hidden;
+}
+
+#arrow::before {
+    visibility: visible;
+    content: '';
+    transform: rotate(45deg);
+    top: 1px;
+    border-bottom: 2px solid var(--grey-border);
+    border-right: 2px solid var(--grey-border);
+}
+
+#tooltip[data-popper-placement^='top'] > #arrow {
+    bottom: -4px;
+}
+
+#tooltip[data-popper-placement^='bottom'] > #arrow {
+    top: -4px;
+}
+
+#tooltip[data-popper-placement^='left'] > #arrow {
+    right: -4px;
+}
+
+#tooltip[data-popper-placement^='right'] > #arrow {
+    left: -4px;
+}
