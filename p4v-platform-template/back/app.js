@@ -17,6 +17,7 @@ const revenueRouter = require('./modules/revenue/router/revenue-router')
 const districtRouter = require('./modules/district/router/district-router')
 const openDataRouter = require('./modules/open_data/router/openData.router')
 const debtChargesRouter = require('./modules/debt_charges/router/debtCharges-router')
+const cadasterRouter = require('./modules/cadaster/router/cadaster-router');
 const validator = require('./helpers/validator')
 const { allowedHeaders, exposedHeaders, cookieSettings } = require("./utils/constants");
 const { rateLimitError, maxFileBytes } = require('./utils/messages')
@@ -94,6 +95,7 @@ fastify.register(revenueRouter, { prefix: "/api/revenue" });
 fastify.register(districtRouter, { prefix: "/api/district" });
 fastify.register(openDataRouter, { prefix: "/api/opendata" });
 fastify.register(debtChargesRouter, { prefix: "/api/debtcharges" });
+fastify.register(cadasterRouter, { prefix: "/api/cadaster" });
 
 fastify.addHook("onSend", async (request, reply) => {
     if (request?.cookies?.['session'] && !request?.url?.includes('auth')) {

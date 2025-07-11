@@ -75,6 +75,8 @@ const OpenDataList = lazy(() => import('./pages/OpenData/OpenDataList.jsx'));
 const OpenDataUniversal = lazy(() => import('./pages/OpenData/OpenDataUniversal'));
 // Debt charges
 const DebtChargesList = lazy(() => import('./pages/DebtCharges/DebtChargesList.jsx'));
+//Cadastral
+const CadasterList = lazy(() => import('./pages/Cadaster/CadasterList'));
 function App() {
     return (
         <BrowserRouter>
@@ -160,7 +162,8 @@ function App() {
                     <Route path="opendata/:tableId/" element={<Suspense fallback={<Loader />}><OpenDataUniversal /></Suspense>} />
                     {/* Debt charges */}
                     <Route exact path="debtcharges" element={<Suspense fallback={<Loader />}><DebtChargesList /></Suspense>} />
-                    
+                    {/* Cadaster Routes */}
+                    <Route exact path="cadaster" element={<Suspense fallback={<Loader />}><CadasterList /></Suspense>} />
                     <Route path="*" element={<PageError title="Схоже, цієї сторінки не знайдено." statusError="404"/>}/>
                 </Route>
             </Routes>
