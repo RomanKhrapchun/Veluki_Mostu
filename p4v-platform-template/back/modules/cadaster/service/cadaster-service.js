@@ -36,7 +36,7 @@ class CadasterService {
                 action_stamp_tx: new Date(),
                 action_stamp_stm: new Date(),
                 action_stamp_clk: new Date(),
-                schema_name: 'public',
+                schema_name: 'ower',
                 table_name: 'cadaster_records',
                 oid: '16504',
             });
@@ -88,7 +88,8 @@ class CadasterService {
             land_tax: request.body.land_tax,
             tax_address: request.body.tax_address,
             cadastral_number: request.body.cadastral_number,
-            editor_id: request?.user?.id
+            editor_id: request?.user?.id,
+            updated_at: new Date()
         };
 
         const result = await cadasterRepository.updateCadasterById(
@@ -206,7 +207,7 @@ class CadasterService {
                 action_stamp_tx: new Date(),
                 action_stamp_stm: new Date(),
                 action_stamp_clk: new Date(),
-                schema_name: 'public',
+                schema_name: 'ower',
                 table_name: 'cadaster_records',
                 oid: '16504',
             });

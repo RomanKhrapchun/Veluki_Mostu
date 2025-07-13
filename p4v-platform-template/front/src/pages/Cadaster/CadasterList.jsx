@@ -609,19 +609,17 @@ const CadasterList = () => {
                         onClick={() => handleEditClick(record.id)}
                         title="Редагувати"
                     />
-                    {store.hasPermission('cadaster', 'delete') && (
-                        <Button
-                            type="icon"
-                            icon={deleteIcon}
-                            onClick={() => handleDeleteClick(record.id)}
-                            title="Видалити"
-                            danger
-                        />
-                    )}
+                    <Button
+                        type="icon"
+                        icon={deleteIcon}
+                        onClick={() => handleDeleteClick(record.id)}
+                        title="Видалити"
+                        danger
+                    />
                 </div>
             ),
         },
-    ], [startRecord, handleViewClick, handleEditClick, handleDeleteClick, store]);
+    ], [startRecord, handleViewClick, handleEditClick, handleDeleteClick]);
 
     // ===== РЕНДЕР ФОРМИ =====
     const renderForm = (formData, formErrors, handleInputChange) => (
@@ -739,24 +737,20 @@ const CadasterList = () => {
             <div className="page-header">
                 <h1 className="page-title">Кадастрові записи платників податків</h1>
                 <div className="page-actions">
-                    {store.hasPermission('cadaster', 'edit') && (
-                        <Button
-                            type="secondary"
-                            icon={uploadIcon}
-                            onClick={handleFileUploadClick}
-                        >
-                            Завантажити Excel
-                        </Button>
-                    )}
-                    {store.hasPermission('cadaster', 'insert') && (
-                        <Button
-                            type="primary"
-                            icon={addIcon}
-                            onClick={handleCreateClick}
-                        >
-                            Додати запис
-                        </Button>
-                    )}
+                    <Button
+                        type="secondary"
+                        icon={uploadIcon}
+                        onClick={handleFileUploadClick}
+                    >
+                        Завантажити Excel
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={addIcon}
+                        onClick={handleCreateClick}
+                    >
+                        Додати запис
+                    </Button>
                 </div>
             </div>
 
@@ -999,18 +993,16 @@ const CadasterList = () => {
                         footer={
                             <div className="modal-actions">
                                 <Button onClick={closeModals}>Закрити</Button>
-                                {store.hasPermission('cadaster', 'edit') && (
-                                    <Button
-                                        type="primary"
-                                        icon={editIcon}
-                                        onClick={() => {
-                                            closeModals();
-                                            setTimeout(() => handleEditClick(stateCadaster.viewingItem.id), 100);
-                                        }}
-                                    >
-                                        Редагувати
-                                    </Button>
-                                )}
+                                <Button
+                                    type="primary"
+                                    icon={editIcon}
+                                    onClick={() => {
+                                        closeModals();
+                                        setTimeout(() => handleEditClick(stateCadaster.viewingItem.id), 100);
+                                    }}
+                                >
+                                    Редагувати
+                                </Button>
                             </div>
                         }
                     >

@@ -45,8 +45,7 @@ class CadasterRepository {
 
     async updateCadasterById(id, cadasterData) {
         let sql = `UPDATE ower.cadaster_records 
-                   SET ${Object.keys(cadasterData).map(field => `${field} = ?`).join(', ')}, 
-                       updated_at = CURRENT_TIMESTAMP 
+                   SET ${Object.keys(cadasterData).map(field => `${field} = ?`).join(', ')}
                    WHERE id = ? 
                    RETURNING id`;
         return await sqlRequest(sql, [...Object.values(cadasterData), id]);
@@ -100,7 +99,7 @@ class CadasterRepository {
 
         batch.forEach(record => {
             const groupPlaceholders = [];
-            for (let i = 0; i < 9; i++) { // 9 полів для вставки
+            for (let i = 0; i < 8; i++) { // 8 полів для вставки
                 groupPlaceholders.push(`$${paramIndex++}`);
             }
             valueGroups.push(`(${groupPlaceholders.join(', ')})`);
@@ -113,15 +112,14 @@ class CadasterRepository {
                 record.land_tax || 0,
                 record.tax_address || null,
                 record.cadastral_number || null,
-                record.uid || null,
-                new Date() // created_at
+                record.uid || null
             );
         });
 
         const sql = `
         INSERT INTO ower.cadaster_records (
             payer_name, payer_address, iban, plot_area,
-            land_tax, tax_address, cadastral_number, uid, created_at
+            land_tax, tax_address, cadastral_number, uid
         ) VALUES ${valueGroups.join(', ')}
         ON CONFLICT (cadastral_number) DO NOTHING
         `;
