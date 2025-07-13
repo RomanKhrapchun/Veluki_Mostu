@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import useFetch from "../../hooks/useFetch";
 import Table from "../../components/common/Table/Table";
 import { generateIcon, iconMap, STATUS } from "../../utils/constants";
@@ -14,6 +14,8 @@ import { useNotification } from "../../hooks/useNotification";
 import { Context } from "../../main";
 import SkeletonPage from "../../components/common/Skeleton/SkeletonPage";
 import FormItem from "../../components/common/FormItem/FormItem";
+import Dropdown from "../../components/common/Dropdown/Dropdown";
+import classNames from "classnames";
 
 // Іконки
 const uploadIcon = generateIcon(iconMap.upload, null, 'currentColor', 20, 20);
@@ -24,12 +26,22 @@ const searchIcon = generateIcon(iconMap.search, 'input-icon', 'currentColor', 16
 const saveIcon = generateIcon(iconMap.save, null, 'currentColor', 20, 20);
 const backIcon = generateIcon(iconMap.back, null, 'currentColor', 20, 20);
 const viewIcon = generateIcon(iconMap.view, null, 'currentColor', 20, 20);
+const filterIcon = generateIcon(iconMap.filter, null, 'currentColor', 20, 20);
+const dropDownIcon = generateIcon(iconMap.arrowDown, null, 'currentColor', 20, 20);
+
+const dropDownStyle = {
+    padding: "8px 16px",
+    width: "150px"
+};
+
+const childDropDownStyle = {
+    padding: "8px 16px"
+};
 
 const CadasterList = () => {
     const navigate = useNavigate();
     const notification = useNotification();
     const { store } = useContext(Context);
-    const { id } = useParams();
     
     const nodeRef = useRef(null);
     const uploadNodeRef = useRef(null);
@@ -44,8 +56,8 @@ const CadasterList = () => {
         sendData: {
             limit: 16,
             page: 1,
-            search: ''
         },
+        selectData: {},
         
         // Модальні вікна
         isDeleteModalOpen: false,
@@ -53,6 +65,7 @@ const CadasterList = () => {
         isCreateModalOpen: false,
         isEditModalOpen: false,
         isViewModalOpen: false,
+        isFilterOpen: false,
         
         // Завантаження
         confirmLoading: false,
@@ -92,20 +105,75 @@ const CadasterList = () => {
             isFirstRun.current = false;
             return;
         }
-        retryFetch();
-    }, [stateCadaster.sendData]);
+        retryFetch('api/cadaster/filter', {
+            method: 'post',
+            data: stateCadaster.sendData,
+        });
+    }, [stateCadaster.sendData, retryFetch]);
+
+    // ===== МЕНЮ DROPDOWN =====
+    const itemMenu = [
+        {
+            label: '16',
+            key: '16',
+            onClick: () => {
+                if (stateCadaster.sendData.limit !== 16) {
+                    setStateCadaster(prevState => ({
+                        ...prevState,
+                        sendData: {
+                            ...prevState.sendData,
+                            limit: 16,
+                            page: 1,
+                        }
+                    }))
+                }
+            },
+        },
+        {
+            label: '32',
+            key: '32',
+            onClick: () => {
+                if (stateCadaster.sendData.limit !== 32) {
+                    setStateCadaster(prevState => ({
+                        ...prevState,
+                        sendData: {
+                            ...prevState.sendData,
+                            limit: 32,
+                            page: 1,
+                        }
+                    }))
+                }
+            },
+        },
+        {
+            label: '48',
+            key: '48',
+            onClick: () => {
+                if (stateCadaster.sendData.limit !== 48) {
+                    setStateCadaster(prevState => ({
+                        ...prevState,
+                        sendData: {
+                            ...prevState.sendData,
+                            limit: 48,
+                            page: 1,
+                        }
+                    }))
+                }
+            },
+        },
+    ];
 
     // ===== ПОШУК ТА ПАГІНАЦІЯ =====
-    const handleSearch = useCallback((_, value) => {
+    const onHandleChange = (name, value) => {
+        console.log('Filter change:', name, value);
         setStateCadaster(prevState => ({
             ...prevState,
-            sendData: {
-                ...prevState.sendData,
-                search: value,
-                page: 1
+            selectData: {
+                ...prevState.selectData,
+                [name]: value
             }
-        }));
-    }, []);
+        }))
+    }
 
     const onPageChange = useCallback((page) => {
         if (stateCadaster.sendData.page !== page) {
@@ -118,6 +186,56 @@ const CadasterList = () => {
             }));
         }
     }, [stateCadaster.sendData.page]);
+
+    // ===== ФІЛЬТРИ =====
+    const filterHandleClick = () => {
+        console.log('Filter button clicked');
+        setStateCadaster(prevState => ({
+            ...prevState,
+            isFilterOpen: !prevState.isFilterOpen,
+        }))
+    }
+
+    const hasActiveFilters = useMemo(() => {
+        return Object.values(stateCadaster.selectData).some(value => {
+            if (Array.isArray(value) && !value.length) {
+                return false
+            }
+            return value !== null && value !== undefined && value !== ''
+        })
+    }, [stateCadaster.selectData])
+
+    const applyFilter = () => {
+        console.log('Apply filter:', stateCadaster.selectData);
+        const isAnyInputFilled = Object.values(stateCadaster.selectData).some(value => {
+            if (Array.isArray(value) && !value.length) {
+                return false
+            }
+            return value
+        })
+        if (isAnyInputFilled) {
+            setStateCadaster(prevState => ({
+                ...prevState,
+                sendData: {
+                    ...stateCadaster.selectData,
+                    limit: prevState.sendData.limit,
+                    page: 1,
+                }
+            }))
+        }
+    }
+
+    const resetFilters = () => {
+        console.log('Reset filters');
+        setStateCadaster(prevState => ({
+            ...prevState,
+            selectData: {},
+            sendData: {
+                limit: prevState.sendData.limit,
+                page: 1,
+            }
+        }))
+    }
 
     // ===== ВАЛІДАЦІЯ ФОРМИ =====
     const validateForm = useCallback((formData) => {
@@ -163,7 +281,6 @@ const CadasterList = () => {
                 ...prevState.formData,
                 [name]: value
             },
-            // Очищуємо помилку для цього поля
             formErrors: {
                 ...prevState.formErrors,
                 [name]: undefined
@@ -173,6 +290,7 @@ const CadasterList = () => {
 
     // ===== СТВОРЕННЯ ЗАПИСУ =====
     const handleCreateClick = useCallback(() => {
+        console.log('Create button clicked');
         setStateCadaster(prevState => ({
             ...prevState,
             isCreateModalOpen: true,
@@ -190,6 +308,7 @@ const CadasterList = () => {
     }, []);
 
     const handleCreateSave = useCallback(async () => {
+        console.log('Create save clicked');
         const errors = validateForm(stateCadaster.formData);
         
         if (Object.keys(errors).length > 0) {
@@ -256,6 +375,7 @@ const CadasterList = () => {
 
     // ===== РЕДАГУВАННЯ ЗАПИСУ =====
     const handleEditClick = useCallback(async (id) => {
+        console.log('Edit button clicked for id:', id);
         try {
             const response = await fetchFunction(`api/cadaster/${id}`);
             if (response && !response.error) {
@@ -286,6 +406,7 @@ const CadasterList = () => {
     }, [notification]);
 
     const handleEditSave = useCallback(async () => {
+        console.log('Edit save clicked');
         const errors = validateForm(stateCadaster.formData);
         
         if (Object.keys(errors).length > 0) {
@@ -344,6 +465,7 @@ const CadasterList = () => {
 
     // ===== ПЕРЕГЛЯД ЗАПИСУ =====
     const handleViewClick = useCallback(async (id) => {
+        console.log('View button clicked for id:', id);
         try {
             const response = await fetchFunction(`api/cadaster/${id}`);
             if (response && !response.error) {
@@ -365,6 +487,7 @@ const CadasterList = () => {
 
     // ===== ВИДАЛЕННЯ ЗАПИСУ =====
     const handleDeleteClick = useCallback((id) => {
+        console.log('Delete button clicked for id:', id);
         setStateCadaster(prevState => ({
             ...prevState,
             isDeleteModalOpen: true,
@@ -373,6 +496,7 @@ const CadasterList = () => {
     }, []);
 
     const confirmDelete = useCallback(async () => {
+        console.log('Confirm delete for id:', stateCadaster.deletedItemId);
         setStateCadaster(prevState => ({ ...prevState, confirmLoading: true }));
         
         try {
@@ -408,6 +532,7 @@ const CadasterList = () => {
 
     // ===== ЗАВАНТАЖЕННЯ EXCEL =====
     const handleFileUploadClick = useCallback(() => {
+        console.log('Upload button clicked');
         setStateCadaster(prevState => ({
             ...prevState,
             isUploadModalOpen: true,
@@ -416,6 +541,7 @@ const CadasterList = () => {
 
     const handleFileSelect = useCallback((event) => {
         const file = event.target.files?.[0];
+        console.log('File selected:', file);
         
         if (file) {
             const fileName = file.name.toLowerCase();
@@ -480,6 +606,7 @@ const CadasterList = () => {
     }, []);
 
     const handleUploadFile = useCallback(async () => {
+        console.log('Upload file:', stateCadaster.selectedFile);
         if (!stateCadaster.selectedFile) {
             notification({
                 type: 'warning',
@@ -530,6 +657,7 @@ const CadasterList = () => {
 
     // ===== ЗАКРИТТЯ МОДАЛЬНИХ ВІКОН =====
     const closeModals = useCallback(() => {
+        console.log('Close modals');
         setStateCadaster(prevState => ({
             ...prevState,
             isDeleteModalOpen: false,
@@ -551,7 +679,7 @@ const CadasterList = () => {
             title: '№',
             key: 'index',
             width: '60px',
-            render: (_, index) => startRecord + index
+            render: (_, record, index) => startRecord + index
         },
         {
             title: 'ПІБ Платника',
@@ -596,24 +724,21 @@ const CadasterList = () => {
             key: 'action',
             width: '150px',
             render: (_, record) => (
-                <div className="table-actions">
+                <div className="btn-sticky" style={{ justifyContent: 'center', gap: '4px' }}>
                     <Button
-                        type="icon"
+                        title="Переглянути"
                         icon={viewIcon}
                         onClick={() => handleViewClick(record.id)}
-                        title="Переглянути"
                     />
                     <Button
-                        type="icon"
+                        title="Редагувати"
                         icon={editIcon}
                         onClick={() => handleEditClick(record.id)}
-                        title="Редагувати"
                     />
                     <Button
-                        type="icon"
+                        title="Видалити"
                         icon={deleteIcon}
                         onClick={() => handleDeleteClick(record.id)}
-                        title="Видалити"
                         danger
                     />
                 </div>
@@ -727,67 +852,94 @@ const CadasterList = () => {
         return <PageError onRetry={retryFetch} />;
     }
 
-    if (status === STATUS.LOADING) {
-        return <SkeletonPage />;
-    }
-
     return (
-        <div className="page">
-            {/* Заголовок сторінки */}
-            <div className="page-header">
-                <h1 className="page-title">Кадастрові записи платників податків</h1>
-                <div className="page-actions">
-                    <Button
-                        type="secondary"
-                        icon={uploadIcon}
-                        onClick={handleFileUploadClick}
-                    >
-                        Завантажити Excel
-                    </Button>
-                    <Button
-                        type="primary"
-                        icon={addIcon}
-                        onClick={handleCreateClick}
-                    >
-                        Додати запис
-                    </Button>
-                </div>
-            </div>
-
-            {/* Фільтри */}
-            <div className="page-filters">
-                <Input
-                    placeholder="Пошук за ПІБ, кадастровим номером або адресою..."
-                    icon={searchIcon}
-                    value={stateCadaster.sendData.search}
-                    onChange={handleSearch}
-                    style={{ width: '400px' }}
-                />
-            </div>
-
-            {/* Контент */}
-            <div className="page-content">
-                <Table
-                    dataSource={data?.data || []}
-                    columns={columns}
-                    loading={status === STATUS.LOADING}
-                    rowKey="id"
-                />
-
-                {data?.totalItems > 0 && (
-                    <Pagination
-                        current={stateCadaster.sendData.page}
-                        pageSize={stateCadaster.sendData.limit}
-                        total={data.totalItems}
-                        onChange={onPageChange}
-                        showSizeChanger={false}
-                    />
-                )}
-
-                <div className="page-info">
-                    Показано записи {startRecord} - {endRecord} з {data?.totalItems || 0}
-                </div>
-            </div>
+        <React.Fragment>
+            {status === STATUS.PENDING ? <SkeletonPage /> : null}
+            {status === STATUS.SUCCESS ? (
+                <React.Fragment>
+                    <div className="table-elements">
+                        <div className="table-header">
+                            <h2 className="title title--sm">
+                                {data?.data && Array.isArray(data?.data) && data?.data.length > 0 ? (
+                                    <React.Fragment>
+                                        Показує {startRecord !== endRecord ? `${startRecord}-${endRecord}` : startRecord} з {data?.totalItems || 1}
+                                    </React.Fragment>
+                                ) : (
+                                    <React.Fragment>Записів не знайдено</React.Fragment>
+                                )}
+                            </h2>
+                            <div className="table-header__buttons">
+                                                               <Button
+                                    icon={uploadIcon}
+                                    onClick={handleFileUploadClick}
+                                >
+                                    Завантажити Excel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    icon={addIcon}
+                                    onClick={handleCreateClick}
+                                >
+                                    Додати запис
+                                </Button>
+                                <Dropdown
+                                    icon={dropDownIcon}
+                                    iconPosition="right"
+                                    style={dropDownStyle}
+                                    childStyle={childDropDownStyle}
+                                    caption={`Записів: ${stateCadaster.sendData.limit}`}
+                                    menu={itemMenu}
+                                />
+                                <Button
+                                    className={`table-filter-trigger ${hasActiveFilters ? 'has-active-filters' : ''}`}
+                                    onClick={filterHandleClick}
+                                    icon={filterIcon}
+                                >
+                                    Фільтри {hasActiveFilters && `(${Object.keys(stateCadaster.selectData).filter(key => stateCadaster.selectData[key]).length})`}
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="table-main">
+                            <div style={{ width: `${data?.data?.length > 0 ? 'auto' : '100%'}` }}
+                                 className={classNames("table-and-pagination-wrapper", { "table-and-pagination-wrapper--active": stateCadaster.isFilterOpen })}>
+                                <Table columns={columns} dataSource={data?.data || []} />
+                                {data?.totalItems > 0 && (
+                                    <Pagination
+                                        className="m-b"
+                                        currentPage={stateCadaster.sendData.page}
+                                        totalCount={data.totalItems}
+                                        pageSize={stateCadaster.sendData.limit}
+                                        onPageChange={onPageChange}
+                                    />
+                                )}
+                            </div>
+                            <div className={`table-filter ${stateCadaster.isFilterOpen ? "table-filter--active" : ""}`}>
+                                <h3 className="title title--sm">
+                                    Фільтри
+                                </h3>
+                                <div className="btn-group">
+                                    <Button onClick={applyFilter}>
+                                        Застосувати
+                                    </Button>
+                                    <Button className="btn--secondary" onClick={resetFilters}>
+                                        Скинути
+                                    </Button>
+                                </div>
+                                <div className="table-filter__item">
+                                    <Input
+                                        icon={searchIcon}
+                                        name="search"
+                                        type="text"
+                                        placeholder="Введіть пошуковий запит"
+                                        value={stateCadaster.selectData?.search || ''}
+                                        onChange={(name, value) => onHandleChange(name, value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </React.Fragment>
+            ) : null}
 
             {/* ===== МОДАЛЬНІ ВІКНА ===== */}
 
@@ -796,22 +948,17 @@ const CadasterList = () => {
                 {(transitionState) => (
                     <Modal
                         ref={nodeRef}
-                        isOpen={stateCadaster.isDeleteModalOpen}
+                        className={`${transitionState === 'entered' ? "modal-window-wrapper--active" : ""}`}
                         onClose={closeModals}
+                        onOk={confirmDelete}
+                        confirmLoading={stateCadaster.confirmLoading}
+                        cancelText="Скасувати"
+                        okText="Так, видалити"
                         title="Підтвердження видалення"
-                        transitionState={transitionState}
                     >
-                        <p>Ви впевнені, що хочете видалити цей кадастровий запис?</p>
-                        <div className="modal-actions">
-                            <Button onClick={closeModals}>Скасувати</Button>
-                            <Button
-                                type="danger"
-                                onClick={confirmDelete}
-                                loading={stateCadaster.confirmLoading}
-                            >
-                                Видалити
-                            </Button>
-                        </div>
+                        <p className="paragraph">
+                            Ви впевнені, що хочете видалити цей кадастровий запис?
+                        </p>
                     </Modal>
                 )}
             </Transition>
@@ -821,23 +968,14 @@ const CadasterList = () => {
                 {(transitionState) => (
                     <Modal
                         ref={uploadNodeRef}
-                        isOpen={stateCadaster.isUploadModalOpen}
+                        className={`${transitionState === 'entered' ? "modal-window-wrapper--active" : ""}`}
                         onClose={closeModals}
+                        onOk={handleUploadFile}
+                        confirmLoading={stateCadaster.uploadLoading}
+                        cancelText="Скасувати"
+                        okText="Завантажити"
                         title="Завантаження Excel файлу"
-                        transitionState={transitionState}
-                        footer={
-                            <div className="modal-actions">
-                                <Button onClick={closeModals}>Скасувати</Button>
-                                <Button
-                                    type="primary"
-                                    onClick={handleUploadFile}
-                                    loading={stateCadaster.uploadLoading}
-                                    disabled={!stateCadaster.selectedFile}
-                                >
-                                    Завантажити
-                                </Button>
-                            </div>
-                        }
+                        okButtonProps={{ disabled: !stateCadaster.selectedFile }}
                     >
                         <div className="upload-modal-content">
                             <p style={{ marginBottom: '16px' }}>
@@ -857,7 +995,6 @@ const CadasterList = () => {
                                 </ul>
                             </div>
                             
-                            {/* Drag & Drop зона */}
                             <div 
                                 style={{
                                     position: 'relative',
@@ -927,24 +1064,14 @@ const CadasterList = () => {
                 {(transitionState) => (
                     <Modal
                         ref={createNodeRef}
-                        isOpen={stateCadaster.isCreateModalOpen}
+                        className={`${transitionState === 'entered' ? "modal-window-wrapper--active" : ""}`}
                         onClose={closeModals}
+                        onOk={handleCreateSave}
+                        confirmLoading={stateCadaster.createLoading}
+                        cancelText="Скасувати"
+                        okText="Створити"
                         title="Створення кадастрового запису"
-                        transitionState={transitionState}
                         width="800px"
-                        footer={
-                            <div className="modal-actions">
-                                <Button onClick={closeModals}>Скасувати</Button>
-                                <Button
-                                    type="primary"
-                                    icon={saveIcon}
-                                    onClick={handleCreateSave}
-                                    loading={stateCadaster.createLoading}
-                                >
-                                    Створити
-                                </Button>
-                            </div>
-                        }
                     >
                         {renderForm(stateCadaster.formData, stateCadaster.formErrors, handleInputChange)}
                     </Modal>
@@ -956,24 +1083,14 @@ const CadasterList = () => {
                 {(transitionState) => (
                     <Modal
                         ref={editNodeRef}
-                        isOpen={stateCadaster.isEditModalOpen}
+                        className={`${transitionState === 'entered' ? "modal-window-wrapper--active" : ""}`}
                         onClose={closeModals}
+                        onOk={handleEditSave}
+                        confirmLoading={stateCadaster.editLoading}
+                        cancelText="Скасувати"
+                        okText="Зберегти"
                         title="Редагування кадастрового запису"
-                        transitionState={transitionState}
                         width="800px"
-                        footer={
-                            <div className="modal-actions">
-                                <Button onClick={closeModals}>Скасувати</Button>
-                                <Button
-                                    type="primary"
-                                    icon={saveIcon}
-                                    onClick={handleEditSave}
-                                    loading={stateCadaster.editLoading}
-                                >
-                                    Зберегти
-                                </Button>
-                            </div>
-                        }
                     >
                         {renderForm(stateCadaster.formData, stateCadaster.formErrors, handleInputChange)}
                     </Modal>
@@ -985,10 +1102,10 @@ const CadasterList = () => {
                 {(transitionState) => (
                     <Modal
                         ref={viewNodeRef}
-                        isOpen={stateCadaster.isViewModalOpen}
+                        className={`${transitionState === 'entered' ? "modal-window-wrapper--active" : ""}`}
                         onClose={closeModals}
+                        cancelText="Закрити"
                         title="Перегляд кадастрового запису"
-                        transitionState={transitionState}
                         width="800px"
                         footer={
                             <div className="modal-actions">
@@ -1060,7 +1177,7 @@ const CadasterList = () => {
                     </Modal>
                 )}
             </Transition>
-        </div>
+        </React.Fragment>
     );
 };
 

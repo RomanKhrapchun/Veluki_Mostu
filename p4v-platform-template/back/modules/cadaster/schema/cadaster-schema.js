@@ -1,111 +1,125 @@
 const cadasterFilterSchema = {
-    body: {
-        page: {
-            type: 'number',
-            optional: true,
-        },
-        limit: {
-            type: 'number',
-            optional: true,
-        },
-        search: {
-            type: 'string',
-            optional: true,
-            min: 1,
-        },
+    schema: {
+        body: {
+            type: 'object',
+            properties: {
+                page: {
+                    type: 'number',
+                    minimum: 1
+                },
+                limit: {
+                    type: 'number',
+                    minimum: 1
+                },
+                search: {
+                    type: 'string',
+                    minLength: 1
+                }
+            }
+        }
     }
 }
 
 const cadasterInfoSchema = {
-    params: {
-        id: {
-            type: 'string',
-            numeric: true,
-        },
+    schema: {
+        params: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+                id: {
+                    type: 'string',
+                    pattern: '^[0-9]+$'
+                }
+            }
+        }
     }
 }
 
 const createCadasterSchema = {
-    body: {
-        payer_name: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
-        payer_address: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
-        iban: {
-            type: 'string',
-            min: 1,
-            trim: true,
-            pattern: /^UA\d{27}$/,
-        },
-        plot_area: {
-            type: 'number',
-            positive: true,
-        },
-        land_tax: {
-            type: 'number',
-            positive: true,
-        },
-        tax_address: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
-        cadastral_number: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
+    schema: {
+        body: {
+            type: 'object',
+            required: ['payer_name', 'payer_address', 'iban', 'plot_area', 'land_tax', 'tax_address', 'cadastral_number'],
+            properties: {
+                payer_name: {
+                    type: 'string',
+                    minLength: 1
+                },
+                payer_address: {
+                    type: 'string',
+                    minLength: 1
+                },
+                iban: {
+                    type: 'string',
+                    pattern: '^UA\\d{27}$'
+                },
+                plot_area: {
+                    type: 'number',
+                    minimum: 0.01
+                },
+                land_tax: {
+                    type: 'number',
+                    minimum: 0.01
+                },
+                tax_address: {
+                    type: 'string',
+                    minLength: 1
+                },
+                cadastral_number: {
+                    type: 'string',
+                    minLength: 1
+                }
+            }
+        }
     }
 }
 
 const updateCadasterSchema = {
-    params: {
-        id: {
-            type: 'string',
-            numeric: true,
+    schema: {
+        params: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+                id: {
+                    type: 'string',
+                    pattern: '^[0-9]+$'
+                }
+            }
         },
-    },
-    body: {
-        payer_name: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
-        payer_address: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
-        iban: {
-            type: 'string',
-            min: 1,
-            trim: true,
-            pattern: /^UA\d{27}$/,
-        },
-        plot_area: {
-            type: 'number',
-            positive: true,
-        },
-        land_tax: {
-            type: 'number',
-            positive: true,
-        },
-        tax_address: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
-        cadastral_number: {
-            type: 'string',
-            min: 1,
-            trim: true,
-        },
+        body: {
+            type: 'object',
+            required: ['payer_name', 'payer_address', 'iban', 'plot_area', 'land_tax', 'tax_address', 'cadastral_number'],
+            properties: {
+                payer_name: {
+                    type: 'string',
+                    minLength: 1
+                },
+                payer_address: {
+                    type: 'string',
+                    minLength: 1
+                },
+                iban: {
+                    type: 'string',
+                    pattern: '^UA\\d{27}$'
+                },
+                plot_area: {
+                    type: 'number',
+                    minimum: 0.01
+                },
+                land_tax: {
+                    type: 'number',
+                    minimum: 0.01
+                },
+                tax_address: {
+                    type: 'string',
+                    minLength: 1
+                },
+                cadastral_number: {
+                    type: 'string',
+                    minLength: 1
+                }
+            }
+        }
     }
 }
 

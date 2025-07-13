@@ -43,7 +43,7 @@ const cadasterRouter = async (fastify) => {
                 let fileData = null;
                 let buffer = null;
                 
-                // Файл знаходиться в request.body.file
+                // З attachFieldsToBody: true файл знаходиться в request.body.file
                 if (request.body && request.body.file) {
                     console.log('✅ Знайдено файл в request.body.file');
                     fileData = request.body.file;
