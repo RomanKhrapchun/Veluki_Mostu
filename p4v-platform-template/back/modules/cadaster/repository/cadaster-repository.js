@@ -3,8 +3,16 @@ const { buildWhereCondition } = require("../../../utils/function");
 
 class CadasterRepository {
 
-    async findCadasterByFilter(limit, offset, search, whereConditions = {}, displayFields = []) {
+    async findCadasterByFilter(limit, offset, search, whereConditions = {}, displayFields = [], sortBy = 'id', sortDirection = 'desc') {
+        const { getSafeCadasterSortField, validateSortDirection } = require("../../../utils/constants");
         const values = [];
+        
+        // Валідуємо параметри сортування
+        const safeSortField = getSafeCadasterSortField(sortBy);
+        const safeSortDirection = validateSortDirection(sortDirection);
+        
+        console.log('🔄 Repository sorting params:', { sortBy, sortDirection, safeSortField, safeSortDirection });
+        
         let sql = `SELECT json_agg(rw) as data, 
                    max(cnt) as count 
                    FROM (
@@ -24,9 +32,26 @@ class CadasterRepository {
             values.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
+        // Додаємо сортування
+        if (sortBy === 'payer_name') {
+            // Сортування по імені без урахування регістру
+            sql += ` ORDER BY LOWER(payer_name) ${safeSortDirection.toUpperCase()}`;
+        } else {
+            // Стандартне сортування
+            sql += ` ORDER BY ${safeSortField} ${safeSortDirection.toUpperCase()}`;
+        }
+        
+        // Вторинне сортування для стабільності
+        if (sortBy !== 'id') {
+            sql += `, id ${safeSortDirection.toUpperCase()}`;
+        }
+
         values.push(limit);
         values.push(offset);
-        sql += ` ORDER BY id DESC LIMIT ? OFFSET ? ) q`;
+        sql += ` LIMIT ? OFFSET ? ) q`;
+
+        console.log('🔍 Final SQL:', sql);
+        console.log('🔍 Values:', values);
 
         return await sqlRequest(sql, [...values]);
     }

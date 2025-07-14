@@ -11,22 +11,46 @@ class CadasterService {
             throw new Error(fieldsListMissingError);
         }
         
-        const { page = 1, limit = 16, search, ...whereConditions } = request.body;
+        const { 
+            page = 1, 
+            limit = 16, 
+            search,
+            sort_by = null,
+            sort_direction = 'desc',
+            ...whereConditions 
+        } = request.body;
+        
         const { offset } = paginate(page, limit);
+        const { allowedCadasterSortFields } = require("../../../utils/constants");
+        
+        // Валідація сортування
+        const isValidSortField = sort_by && allowedCadasterSortFields.includes(sort_by);
+        const isValidSortDirection = ['asc', 'desc'].includes(sort_direction?.toLowerCase());
+
+        const validSortBy = isValidSortField ? sort_by : 'id';
+        const validSortDirection = isValidSortDirection ? sort_direction.toLowerCase() : 'desc';
+
+        console.log('🔄 Cadaster sorting params received:', { sort_by, sort_direction });
+        console.log('🔄 Validated cadaster sorting params:', { validSortBy, validSortDirection });
+        
         const allowedFields = allowedCadasterTableFilterFields
             .filter(el => whereConditions.hasOwnProperty(el))
             .reduce((acc, key) => ({ ...acc, [key]: whereConditions[key] }), {});
+
+        console.log('🔍 Allowed filter fields:', allowedFields);
 
         const cadasterData = await cadasterRepository.findCadasterByFilter(
             limit, 
             offset, 
             search, 
             allowedFields, 
-            displayCadasterFields
+            displayCadasterFields,
+            validSortBy,        // Додано параметр сортування
+            validSortDirection  // Додано напрямок сортування
         );
         
         // Логування пошуку
-        if (search || whereConditions?.payer_name) {
+        if (search || Object.keys(allowedFields).length) {
             await logRepository.createLog({
                 row_pk_id: null,
                 uid: request?.user?.id,
@@ -213,77 +237,82 @@ class CadasterService {
             });
 
             return {
+                success: true,
+                message: `Успішно завантажено ${uploadResult.imported} записів з ${uploadResult.total}`,
                 imported: uploadResult.imported,
-                total: uploadResult.total,
-                skipped: uploadResult.total - uploadResult.imported,
-                fileName: fileName
+                total: uploadResult.total
             };
 
         } catch (error) {
-            console.error('❌ Помилка завантаження Excel:', error);
-            throw new Error(`Помилка обробки файлу: ${error.message}`);
+            console.error('❌ Помилка обробки Excel файлу:', error);
+            throw error;
         }
     }
 
-    // Валідація та перетворення даних з Excel
     validateAndTransformExcelData(jsonData, userId) {
         const validatedData = [];
         const errors = [];
 
         jsonData.forEach((row, index) => {
-            const rowNumber = index + 2; // +2 тому що індекс з 0 + заголовок
-            const record = {};
-
+            const rowNumber = index + 2; // +2 тому що рядок 1 це заголовки, і індекс починається з 0
+            
             try {
-                // Валідація ПІБ Платника
-                if (!row['PAYER_NAME'] || typeof row['PAYER_NAME'] !== 'string' || !row['PAYER_NAME'].trim()) {
-                    errors.push(`Рядок ${rowNumber}: ПІБ Платника є обов'язковим`);
+                const record = {};
+
+                // Валідація ПІБ платника
+                if (!row['PAYER_NAME'] || !row['PAYER_NAME'].trim()) {
+                    errors.push(`Рядок ${rowNumber}: Відсутнє ПІБ платника`);
+                    return;
                 } else {
                     record.payer_name = row['PAYER_NAME'].trim();
                 }
 
-                // Валідація Адреса платника
+                // Валідація адреси платника
                 if (!row['TO_ADDRESS'] || !row['TO_ADDRESS'].trim()) {
-                    errors.push(`Рядок ${rowNumber}: Адреса платника є обов'язковою`);
+                    errors.push(`Рядок ${rowNumber}: Відсутня адреса платника`);
+                    return;
                 } else {
                     record.payer_address = row['TO_ADDRESS'].trim();
                 }
 
-                // IBAN - роблю більш гнучким (можливо це не IBAN)
+                // Валідація IBAN (роблю опціональним)
                 if (row['ST'] && row['ST'].trim()) {
-                    const ibanValue = row['ST'].toString().trim();
-                    // Якщо починається з UA і має правильну довжину - валідуємо як IBAN
-                    if (ibanValue.startsWith('UA') && ibanValue.length === 29) {
-                        if (!/^UA\d{27}$/.test(ibanValue)) {
-                            errors.push(`Рядок ${rowNumber}: IBAN має невірний формат`);
-                        } else {
-                            record.iban = ibanValue;
-                        }
+                    const iban = row['ST'].trim().replace(/\s/g, ''); // Прибираємо пробіли
+                    if (!/^UA\d{27}$/.test(iban)) {
+                        errors.push(`Рядок ${rowNumber}: Некоректний формат IBAN: "${iban}"`);
                     } else {
-                        // Якщо це не IBAN, генеруємо фейковий для тесту
-                        record.iban = 'UA123456789012345678901234567';
+                        record.iban = iban;
                     }
                 } else {
-                    // Якщо немає ST, генеруємо фейковий IBAN
-                    record.iban = 'UA123456789012345678901234567';
+                    record.iban = null; // Дозволяємо порожній IBAN
                 }
 
-                // Валідація Площа діляки
-                const plotArea = parseFloat(row['SQUARE']);
-                if (!plotArea || isNaN(plotArea) || plotArea <= 0) {
-                    // Якщо немає площі, ставимо 1
-                    record.plot_area = 1.0;
+                // Валідація площі ділянки
+                if (!row['SQUARE']) {
+                    record.plot_area = 0.0;
                 } else {
-                    record.plot_area = plotArea;
+                    const plotArea = parseFloat(row['SQUARE']);
+                    if (isNaN(plotArea) || plotArea < 0) {
+                        errors.push(`Рядок ${rowNumber}: Некоректна площа ділянки: "${row['SQUARE']}"`);
+                        record.plot_area = 0.0;
+                    } else {
+                        record.plot_area = plotArea;
+                    }
                 }
 
-                // Валідація Земельний податок
-                const landTax = parseFloat(row['ZN']);
-                if (!landTax || isNaN(landTax) || landTax <= 0) {
+                // Валідація земельного податку
+                if (!row['ZN']) {
                     // Якщо немає податку, ставимо 100
                     record.land_tax = 100.0;
                 } else {
-                    record.land_tax = landTax;
+                    const landTax = parseFloat(row['ZN']);
+                    if (isNaN(landTax) || landTax < 0) {
+                        errors.push(`Рядок ${rowNumber}: Некоректний земельний податок: "${row['ZN']}"`);
+                        // Якщо немає податку, ставимо 100
+                        record.land_tax = 100.0;
+                    } else {
+                        record.land_tax = landTax;
+                    }
                 }
 
                 // Валідація Податкова адреса - роблю опціональною
