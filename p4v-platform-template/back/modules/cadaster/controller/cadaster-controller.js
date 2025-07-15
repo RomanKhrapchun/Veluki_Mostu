@@ -10,7 +10,11 @@ class CadasterController {
             return reply.send(cadasterData);
         } catch (error) {
             Logger.error(error.message, { stack: error.stack });
-            reply.status(400).send(error);
+            // ✅ ВИПРАВЛЕНО: Повертаємо структурований error замість сирого об'єкта
+            return reply.status(400).send({
+                error: true,
+                message: error.message || "Не вдалося виконати запит до бази даних. Будь ласка, спробуйте ще раз пізніше або зверніться до адміністратора системи."
+            });
         }
     }
 
@@ -20,7 +24,10 @@ class CadasterController {
             return reply.send(cadasterData);
         } catch (error) {
             Logger.error(error.message, { stack: error.stack });
-            reply.status(400).send(error);
+            return reply.status(400).send({
+                error: true,
+                message: error.message || "Не вдалося отримати кадастровий запис."
+            });
         }
     }
 
@@ -30,7 +37,10 @@ class CadasterController {
             return reply.send(createSuccessMessage);
         } catch (error) {
             Logger.error(error.message, { stack: error.stack });
-            reply.status(400).send(error);
+            return reply.status(400).send({
+                error: true,
+                message: error.message || "Не вдалося створити кадастровий запис."
+            });
         }
     }
 
@@ -40,7 +50,10 @@ class CadasterController {
             return reply.send(updateSuccessMessage);
         } catch (error) {
             Logger.error(error.message, { stack: error.stack });
-            reply.status(400).send(error);
+            return reply.status(400).send({
+                error: true,
+                message: error.message || "Не вдалося оновити кадастровий запис."
+            });
         }
     }
 
@@ -50,7 +63,10 @@ class CadasterController {
             return reply.send(deleteSuccessMessage);
         } catch (error) {
             Logger.error(error.message, { stack: error.stack });
-            reply.status(400).send(error);
+            return reply.status(400).send({
+                error: true,
+                message: error.message || "Не вдалося видалити кадастровий запис."
+            });
         }
     }
 
@@ -64,9 +80,10 @@ class CadasterController {
             });
         } catch (error) {
             Logger.error(error.message, { stack: error.stack });
-            reply.status(400).send({
+            return reply.status(400).send({
                 success: false,
-                message: error.message
+                error: true,
+                message: error.message || "Не вдалося завантажити файл."
             });
         }
     }

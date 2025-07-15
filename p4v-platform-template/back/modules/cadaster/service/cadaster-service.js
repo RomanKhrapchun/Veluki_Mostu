@@ -9,6 +9,9 @@ class CadasterService {
     async findCadasterByFilter(request) {
         const page = request?.body?.page || 1;
         const limit = request?.body?.limit || 16;
+        const title = request?.body?.title || null; // ✅ ЗМІНЕНО: title замість search
+        const sortBy = request?.body?.sort_by || 'id';
+        const sortDirection = request?.body?.sort_direction || 'desc';
         
         // Умови фільтрування
         const whereConditions = {};
@@ -42,34 +45,55 @@ class CadasterService {
             throw new Error(fieldsListMissingError);
         }
 
-        const cadasterData = await cadasterRepository.findCadasterByFilter(
-            limit, 
-            page, 
-            null, // title - не використовуємо для кадастру
-            whereConditions, 
-            displayCadasterFields,
-            request?.body?.sort_by,
-            request?.body?.sort_direction
-        );
-
-        // Логування
-        if (Object.keys(whereConditions).length > 0) {
-            await logRepository.createLog({
-                row_pk_id: null,
-                uid: request?.user?.id,
-                action: 'SELECT',
-                client_addr: request?.ip,
-                application_name: `Фільтрування кадастрових записів`,
-                action_stamp_tx: new Date(),
-                action_stamp_stm: new Date(),
-                action_stamp_clk: new Date(),
-                schema_name: 'ower',
-                table_name: 'cadaster_records',
-                oid: '16504',
+        try {
+            console.log('🔍 Cadaster filter request:', {
+                page,
+                limit,
+                title, // ✅ ЗМІНЕНО: title замість search
+                whereConditions,
+                sortBy,
+                sortDirection
             });
+
+            // ✅ ВИПРАВЛЕНО: Правильний порядок параметрів
+            const offset = (page - 1) * limit;
+            const cadasterData = await cadasterRepository.findCadasterByFilter(
+                limit, 
+                offset, 
+                title, // ✅ ЗМІНЕНО: title замість search
+                whereConditions, 
+                displayCadasterFields,
+                sortBy,
+                sortDirection
+            );
+
+            // ✅ ВИПРАВЛЕНО: Змінено умову логування
+            if (Object.keys(whereConditions).length > 0 || title) {
+                await logRepository.createLog({
+                    row_pk_id: null,
+                    uid: request?.user?.id,
+                    action: 'SEARCH', // Змінено з 'SELECT' на 'SEARCH'
+                    client_addr: request?.ip,
+                    application_name: `Фільтрування кадастрових записів`,
+                    action_stamp_tx: new Date(),
+                    action_stamp_stm: new Date(),
+                    action_stamp_clk: new Date(),
+                    schema_name: 'ower',
+                    table_name: 'cadaster_records',
+                    oid: '16504',
+                });
+            }
+            
+            console.log('✅ Cadaster data retrieved successfully:', {
+                totalRecords: cadasterData[0]?.count || 0,
+                dataLength: cadasterData[0]?.data?.length || 0
+            });
+            
+            return paginationData(cadasterData[0], page, limit);
+        } catch (error) {
+            console.error('❌ Error in findCadasterByFilter:', error);
+            throw new Error("Не вдалося виконати запит до бази даних. Будь ласка, спробуйте ще раз пізніше або зверніться до адміністратора системи.");
         }
-        
-        return paginationData(cadasterData[0], page, limit);
     }
 
     async getCadasterById(request) {
@@ -77,160 +101,44 @@ class CadasterService {
             throw new Error(fieldsListMissingError);
         }
         
-        const cadasterData = await cadasterRepository.getCadasterById(
-            request?.params?.id, 
-            displayCadasterFields
-        );
-        
-        if (!cadasterData.length) {
-            throw new Error(NotFoundErrorMessage);
+        try {
+            const cadasterData = await cadasterRepository.getCadasterById(
+                request?.params?.id, 
+                displayCadasterFields
+            );
+            
+            if (!cadasterData.length) {
+                throw new Error(NotFoundErrorMessage);
+            }
+            
+            return cadasterData[0];
+        } catch (error) {
+            console.error('❌ Error in getCadasterById:', error);
+            throw error;
         }
-        
-        return cadasterData[0];
     }
 
     async createCadaster(request) {
-        const cadasterData = {
-            payer_name: request.body.payer_name,
-            payer_address: request.body.payer_address,
-            iban: request.body.iban,
-            plot_area: request.body.plot_area,
-            land_tax: request.body.land_tax,
-            tax_address: request.body.tax_address,
-            cadastral_number: request.body.cadastral_number,
-            uid: request?.user?.id,
-            created_at: new Date(),
-            updated_at: new Date()
-        };
-
-        return await cadasterRepository.createCadaster(cadasterData);
-    }
-
-    async updateCadasterById(request) {
-        const cadasterData = {
-            payer_name: request.body.payer_name,
-            payer_address: request.body.payer_address,
-            iban: request.body.iban,
-            plot_area: request.body.plot_area,
-            land_tax: request.body.land_tax,
-            tax_address: request.body.tax_address,
-            cadastral_number: request.body.cadastral_number,
-            editor_id: request?.user?.id,
-            updated_at: new Date()
-        };
-
-        const result = await cadasterRepository.updateCadasterById(
-            request?.params?.id, 
-            cadasterData
-        );
-        
-        if (!result.length) {
-            throw new Error(NotFoundErrorMessage);
-        }
-        
-        return result[0];
-    }
-
-    async deleteCadasterById(request) {
-        const result = await cadasterRepository.deleteCadasterById(request?.params?.id);
-        
-        if (!result.length) {
-            throw new Error(NotFoundErrorMessage);
-        }
-        
-        return result[0];
-    }
-
-    // Метод для завантаження Excel файлу з кадастровими даними
-    async processExcelUpload(request) {
-        const xlsx = require('xlsx');
-
         try {
-            if (!request.file) {
-                throw new Error("Файл не завантажено!");
-            }
+            const cadasterData = {
+                payer_name: request.body.payer_name,
+                payer_address: request.body.payer_address,
+                iban: request.body.iban,
+                plot_area: request.body.plot_area,
+                land_tax: request.body.land_tax,
+                tax_address: request.body.tax_address,
+                cadastral_number: request.body.cadastral_number,
+                uid: request?.user?.id
+            };
 
-            // Отримуємо назву файлу
-            let fileName = request.file.originalname || request.file.filename || 'unknown';
+            const result = await cadasterRepository.createCadaster(cadasterData);
             
-            // Перевіряємо розширення файлу
-            const fileExtension = fileName.toLowerCase().split('.').pop();
-            const isValidFormat = fileExtension === 'xls' || fileExtension === 'xlsx';
-            
-            if (!isValidFormat) {
-                throw new Error(`Файл має бути у форматі Excel (.xls або .xlsx)!`);
-            }
-
-            // Перевіряємо buffer
-            if (!request.file.buffer) {
-                throw new Error("Не вдалося отримати дані файлу!");
-            }
-
-            // Читаємо Excel файл
-            const workbook = xlsx.read(request.file.buffer, { 
-                type: "buffer", 
-                cellDates: true,
-                bookType: fileExtension === 'xls' ? 'xls' : 'xlsx'
-            });
-            
-            if (!workbook.SheetNames.length) {
-                throw new Error("Excel файл не містить аркушів!");
-            }
-
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            
-            // Читаємо дані з аркуша
-            const jsonData = xlsx.utils.sheet_to_json(worksheet, {
-                defval: null,
-                blankrows: false,
-                raw: false
-            });
-
-            if (!jsonData.length) {
-                throw new Error("Файл не містить даних!");
-            }
-
-            // Валідація структури файлу
-            const requiredColumns = [
-                'PAYER_NAME',
-                'TO_ADDRESS', 
-                'ST',
-                'SQUARE',
-                'ZN',
-                'Податкова адреса платника',
-                'Кадастровий номер'
-            ];
-
-            const errors = [];
-            const firstRow = jsonData[0];
-            const availableColumns = Object.keys(firstRow);
-            
-            requiredColumns.forEach(column => {
-                if (!availableColumns.includes(column)) {
-                    errors.push(`Відсутня обов'язкова колонка: "${column}"`);
-                }
-            });
-
-            if (errors.length > 0) {
-                throw new Error(`Помилки в структурі файлу: ${errors.join('\n')}
-                Доступні колонки: ${availableColumns.map(col => `"${col}"`).join(', ')}`);
-            }
-
-            // Валідація та перетворення даних
-            const validatedData = this.validateAndTransformExcelData(jsonData, request?.user?.id);
-            
-            // Масове створення записів
-            const uploadResult = await cadasterRepository.bulkCreateCadaster(validatedData);
-            
-            // Логування
-            const safeFileName = fileName.replace(/[^\w\s.-]/g, '_');
             await logRepository.createLog({
-                row_pk_id: null,
+                row_pk_id: result[0]?.id,
                 uid: request?.user?.id,
                 action: 'INSERT',
                 client_addr: request?.ip,
-                application_name: `Завантаження файлу кадастрових записів (${safeFileName})`,
+                application_name: 'Створення кадастрового запису',
                 action_stamp_tx: new Date(),
                 action_stamp_stm: new Date(),
                 action_stamp_clk: new Date(),
@@ -238,133 +146,84 @@ class CadasterService {
                 table_name: 'cadaster_records',
                 oid: '16504',
             });
-
-            return {
-                success: true,
-                message: `Успішно завантажено ${uploadResult.imported} записів з ${uploadResult.total}`,
-                imported: uploadResult.imported,
-                total: uploadResult.total
-            };
-
+            
+            return result[0];
         } catch (error) {
-            console.error('❌ Помилка обробки Excel файлу:', error);
+            console.error('❌ Error in createCadaster:', error);
             throw error;
         }
     }
 
-    validateAndTransformExcelData(jsonData, userId) {
-        const validatedData = [];
-        const errors = [];
+    async updateCadasterById(request) {
+        try {
+            const cadasterData = {
+                payer_name: request.body.payer_name,
+                payer_address: request.body.payer_address,
+                iban: request.body.iban,
+                plot_area: request.body.plot_area,
+                land_tax: request.body.land_tax,
+                tax_address: request.body.tax_address,
+                cadastral_number: request.body.cadastral_number,
+                editor_id: request?.user?.id
+            };
 
-        jsonData.forEach((row, index) => {
-            const rowNumber = index + 2; // +2 тому що рядок 1 це заголовки, і індекс починається з 0
+            const result = await cadasterRepository.updateCadasterById(request?.params?.id, cadasterData);
             
-            try {
-                const record = {};
-
-                // Валідація ПІБ платника
-                if (!row['PAYER_NAME'] || !row['PAYER_NAME'].trim()) {
-                    errors.push(`Рядок ${rowNumber}: Відсутнє ПІБ платника`);
-                    return;
-                } else {
-                    record.payer_name = row['PAYER_NAME'].trim();
-                }
-
-                // Валідація адреси платника
-                if (!row['TO_ADDRESS'] || !row['TO_ADDRESS'].trim()) {
-                    errors.push(`Рядок ${rowNumber}: Відсутня адреса платника`);
-                    return;
-                } else {
-                    record.payer_address = row['TO_ADDRESS'].trim();
-                }
-
-                // Валідація IBAN (роблю опціональним)
-                if (row['ST'] && row['ST'].trim()) {
-                    const iban = row['ST'].trim().replace(/\s/g, ''); // Прибираємо пробіли
-                    if (!/^UA\d{27}$/.test(iban)) {
-                        errors.push(`Рядок ${rowNumber}: Некоректний формат IBAN: "${iban}"`);
-                    } else {
-                        record.iban = iban;
-                    }
-                } else {
-                    record.iban = null; // Дозволяємо порожній IBAN
-                }
-
-                // Валідація площі ділянки
-                if (!row['SQUARE']) {
-                    record.plot_area = 0.0;
-                } else {
-                    const plotArea = parseFloat(row['SQUARE']);
-                    if (isNaN(plotArea) || plotArea < 0) {
-                        errors.push(`Рядок ${rowNumber}: Некоректна площа ділянки: "${row['SQUARE']}"`);
-                        record.plot_area = 0.0;
-                    } else {
-                        record.plot_area = plotArea;
-                    }
-                }
-
-                // Валідація земельного податку
-                if (!row['ZN']) {
-                    // Якщо немає податку, ставимо 100
-                    record.land_tax = 100.0;
-                } else {
-                    const landTax = parseFloat(row['ZN']);
-                    if (isNaN(landTax) || landTax < 0) {
-                        errors.push(`Рядок ${rowNumber}: Некоректний земельний податок: "${row['ZN']}"`);
-                        // Якщо немає податку, ставимо 100
-                        record.land_tax = 100.0;
-                    } else {
-                        record.land_tax = landTax;
-                    }
-                }
-
-                // Валідація Податкова адреса - роблю опціональною
-                if (row['Податкова адреса платника'] && row['Податкова адреса платника'].trim()) {
-                    record.tax_address = row['Податкова адреса платника'].trim();
-                } else {
-                    // Якщо немає податкової адреси, використовуємо основну адресу
-                    record.tax_address = record.payer_address || 'Не вказано';
-                }
-
-                // ОНОВЛЕНА ЛОГІКА: Валідація Кадастровий номер
-                if (!row['Кадастровий номер'] || !row['Кадастровий номер'].trim()) {
-                    // ЗМІНА: Замість генерування AUTO номера, залишаємо null
-                    // Це дозволить показувати "Інформація не надана" на фронтенді
-                    record.cadastral_number = null;
-                } else {
-                    record.cadastral_number = row['Кадастровий номер'].trim();
-                }
-
-                // Додаємо службові поля
-                record.uid = userId;
-
-                // Якщо є основні дані, додаємо в масив
-                if (record.payer_name && record.payer_address) {
-                    validatedData.push(record);
-                }
-
-            } catch (error) {
-                errors.push(`Рядок ${rowNumber}: Помилка обробки - ${error.message}`);
-            }
-        });
-
-        // Показуємо тільки перші 20 помилок для тестування
-        if (errors.length > 0) {
-            console.log(`Знайдено ${errors.length} помилок. Перші 20:`);
-            console.log(errors.slice(0, 20).join('\n'));
+            await logRepository.createLog({
+                row_pk_id: request?.params?.id,
+                uid: request?.user?.id,
+                action: 'UPDATE',
+                client_addr: request?.ip,
+                application_name: 'Оновлення кадастрового запису',
+                action_stamp_tx: new Date(),
+                action_stamp_stm: new Date(),
+                action_stamp_clk: new Date(),
+                schema_name: 'ower',
+                table_name: 'cadaster_records',
+                oid: '16504',
+            });
             
-            // Якщо є хоча б якісь валідні дані, продовжуємо
-            if (validatedData.length > 0) {
-                console.log(`Валідних записів: ${validatedData.length}`);
-                return validatedData;
-            } else {
-                throw new Error(`Помилки валідації:\n${errors.slice(0, 10).join('\n')}${errors.length > 10 ? `\n... та ще ${errors.length - 10} помилок` : ''}`);
-            }
+            return result[0];
+        } catch (error) {
+            console.error('❌ Error in updateCadasterById:', error);
+            throw error;
         }
-
-        return validatedData;
     }
 
+    async deleteCadasterById(request) {
+        try {
+            const result = await cadasterRepository.deleteCadasterById(request?.params?.id);
+            
+            await logRepository.createLog({
+                row_pk_id: request?.params?.id,
+                uid: request?.user?.id,
+                action: 'DELETE',
+                client_addr: request?.ip,
+                application_name: 'Видалення кадастрового запису',
+                action_stamp_tx: new Date(),
+                action_stamp_stm: new Date(),
+                action_stamp_clk: new Date(),
+                schema_name: 'ower',
+                table_name: 'cadaster_records',
+                oid: '16504',
+            });
+            
+            return result[0];
+        } catch (error) {
+            console.error('❌ Error in deleteCadasterById:', error);
+            throw error;
+        }
+    }
+
+    // Додатковий метод для отримання кадастрових номерів по ПІБ (для debtor модуля)
+    async getCadastralNumberByPayerName(payerName) {
+        try {
+            return await cadasterRepository.getCadastralNumberByPayerName(payerName);
+        } catch (error) {
+            console.error('❌ Error in getCadastralNumberByPayerName:', error);
+            return null;
+        }
+    }
 }
 
 module.exports = new CadasterService();

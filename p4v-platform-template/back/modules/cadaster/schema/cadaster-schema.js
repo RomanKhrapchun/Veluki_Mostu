@@ -1,6 +1,3 @@
-// Доповнення до існуючого файлу cadaster-schema.js
-// ПЕРЕВІРИТИ чи ваша схема cadasterFilterSchema включає всі поля для фільтрування
-
 const cadasterFilterSchema = {
     schema: {
         body: {
@@ -14,18 +11,23 @@ const cadasterFilterSchema = {
                     type: 'number',
                     minimum: 1
                 },
+                // ✅ ДОДАНО: Підтримка title параметра як в debtor
+                title: {
+                    type: 'string',
+                    minLength: 1
+                },
                 search: {
                     type: 'string',
                     minLength: 1
                 },
-                // ВАЖЛИВО: переконайтеся що всі ці поля є у вашій схемі:
+                // Фільтри для конкретних полів
                 payer_name: {
                     type: 'string'
                 },
                 payer_address: {
                     type: 'string'
                 },
-                tax_address: {            // НОВЕ ПОЛЕ - додати якщо немає
+                tax_address: {
                     type: 'string'
                 },
                 cadastral_number: {
@@ -34,7 +36,15 @@ const cadasterFilterSchema = {
                 iban: {
                     type: 'string'
                 },
-                // Додаткові поля для сортування:
+                plot_area: {
+                    type: 'number',
+                    minimum: 0
+                },
+                land_tax: {
+                    type: 'number',
+                    minimum: 0
+                },
+                // Сортування
                 sort_by: {
                     type: 'string'
                 },
@@ -47,7 +57,6 @@ const cadasterFilterSchema = {
     }
 }
 
-// Якщо у вас немає цих схем, додайте їх:
 const cadasterInfoSchema = {
     schema: {
         params: {

@@ -240,27 +240,38 @@ const CadasterList = () => {
     }
 
     const resetFilters = () => {
+        // Очищаємо selectData
         if (Object.values(stateCadaster.selectData).some(value => value)) {
             setStateCadaster(prevState => ({
                 ...prevState,
-                selectData: {
-                    payer_name: '',
-                    payer_address: '',
-                    tax_address: '',
-                    cadastral_number: '',
-                    iban: ''
-                },
+                selectData: {},
+            }));
+        }
+        
+        // Очищаємо sendData від фільтрів
+        const dataReadyForSending = hasOnlyAllowedParams(stateCadaster.sendData, ['limit', 'page', 'sort_by', 'sort_direction']);
+        if (!dataReadyForSending) {
+            setStateCadaster(prevState => ({
+                ...prevState,
                 sendData: {
-                    ...prevState.sendData,
-                    page: 1
+                    limit: prevState.sendData.limit,
+                    page: 1,
+                    sort_by: prevState.sendData.sort_by,
+                    sort_direction: prevState.sendData.sort_direction,
                 }
             }));
         }
     }
 
     const applyFilter = () => {
-        if (Object.values(stateCadaster.selectData).some(value => value)) {
-            const dataValidation = validateFilters(stateCadaster.selectData);
+        const isAnyInputFilled = Object.values(stateCadaster.selectData).some(value => {
+            if (Array.isArray(value) && !value.length) {
+                return false
+            }
+            return value
+        })
+        if (isAnyInputFilled) {
+            const dataValidation = validateFilters(stateCadaster.selectData)
             if (!dataValidation.error) {
                 setStateCadaster(prevState => ({
                     ...prevState,
@@ -269,17 +280,17 @@ const CadasterList = () => {
                         limit: prevState.sendData.limit,
                         page: 1,
                         sort_by: prevState.sendData.sort_by,
-                        sort_direction: prevState.sendData.sort_direction
+                        sort_direction: prevState.sendData.sort_direction,
                     },
-                    isFilterOpen: false
-                }));
+                    isFilterOpen: false,
+                }))
             } else {
                 notification({
                     type: 'warning',
-                    title: 'Помилка фільтрації',
-                    message: dataValidation.message,
                     placement: 'top',
-                });
+                    title: 'Помилка',
+                    message: dataValidation.message ?? 'Щось пішло не так.',
+                })
             }
         }
     }

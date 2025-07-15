@@ -8,6 +8,7 @@ import Loader from "../../components/Loader/Loader";
 import PageError from "../ErrorPage/PageError";
 
 const onBackIcon = generateIcon(iconMap.back)
+
 const UserView = () => {
     const {debtId} = useParams()
     const navigate = useNavigate()
@@ -41,18 +42,30 @@ const UserView = () => {
                     {
                         title: 'МПЗ', dataIndex: 'mpz',
                     },
+                    {
+                        title: 'Кадастровий номер', dataIndex: 'cadastral_number',
+                    },
                 ],
-                data: data.map(el => ({
-                    key: el.id,
-                    id: el.id,
-                    name: el.name,
-                    date: el.date,
-                    non_residential_debt: el.non_residential_debt,
-                    residential_debt: el.residential_debt,
-                    land_debt: el.land_debt,
-                    orenda_debt: el.orenda_debt,
-                    mpz: el.mpz,
-                }))
+                data: data.map(el => {
+                    const isValidCadastral = el.cadastral_number && 
+                                           el.cadastral_number !== null && 
+                                           el.cadastral_number !== '' && 
+                                           !el.cadastral_number.includes('AUTO_') && 
+                                           el.cadastral_number.length > 5;
+
+                    return {
+                        key: el.id,
+                        id: el.id,
+                        name: el.name,
+                        date: el.date,
+                        non_residential_debt: el.non_residential_debt,
+                        residential_debt: el.residential_debt,
+                        land_debt: el.land_debt,
+                        orenda_debt: el.orenda_debt,
+                        mpz: el.mpz,
+                        cadastral_number: isValidCadastral ? el.cadastral_number : 'Інформація не надана',
+                    }
+                })
             }
         }
         return {columns: [], data: []};
@@ -68,16 +81,19 @@ const UserView = () => {
 
     return (
         <React.Fragment>
-            {status === STATUS.SUCCESS ? (
-                <React.Fragment>
-                    <div className="btn-group" style={{marginBottom: '10px'}}>
-                        <Button icon={onBackIcon} onClick={() => navigate('/debtor')}>
-                            Повернутись до реєстру
-                        </Button>
-                    </div>
-                    <ViewCard dataSource={tableData.data} columns={tableData.columns}/>
-                </React.Fragment>
-            ) : null}
-        </React.Fragment>);
+            {status === STATUS.SUCCESS ?
+                (
+                    <React.Fragment>
+                        <div className="btn-group" style={{marginBottom: '10px'}}>
+                            <Button icon={onBackIcon} onClick={() => navigate('/debtor')}>
+                                Повернутись до реєстру
+                            </Button>
+                        </div>
+                        <ViewCard dataSource={tableData.data} columns={tableData.columns}/>
+                    </React.Fragment>
+                ) : null}
+        </React.Fragment>
+    );
 }
+
 export default UserView;

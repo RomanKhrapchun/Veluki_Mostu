@@ -3,13 +3,13 @@ const { buildWhereCondition } = require("../../../utils/function");
 
 class CadasterRepository {
 
-    async findCadasterByFilter(limit, offset, search, whereConditions = {}, displayFields = [], sortBy = 'id', sortDirection = 'desc') {
+    async findCadasterByFilter(limit, offset, title, whereConditions = {}, displayFields = [], sortBy = 'id', sortDirection = 'desc') {
         const { getSafeCadasterSortField, validateSortDirection } = require("../../../utils/constants");
         const values = [];
         
-        // Валідуємо параметри сортування
-        const safeSortField = getSafeCadasterSortField ? getSafeCadasterSortField(sortBy) : 'id';
-        const safeSortDirection = validateSortDirection ? validateSortDirection(sortDirection) : 'desc';
+        // Валідуємо параметри сортування з безпечними значеннями за замовчуванням
+        const safeSortField = getSafeCadasterSortField ? getSafeCadasterSortField(sortBy) : (sortBy || 'id');
+        const safeSortDirection = validateSortDirection ? validateSortDirection(sortDirection) : (sortDirection || 'desc');
         
         console.log('🔄 Repository sorting params:', { sortBy, sortDirection, safeSortField, safeSortDirection });
         
@@ -21,15 +21,17 @@ class CadasterRepository {
                        FROM ower.cadaster_records
                        WHERE 1=1`;
 
+        // ✅ ВИПРАВЛЕНО: Використовуємо спеціальну функцію для cadaster
         if (Object.keys(whereConditions).length) {
-            const data = buildWhereCondition(whereConditions);
+            const data = this.buildCadasterWhereCondition(whereConditions);
             sql += data.text;
             values.push(...data.value);
         }
 
-        if (search) {
+        // ✅ ДОДАНО: Загальний пошук по title (як в debtor)
+        if (title) {
             sql += ` AND (payer_name ILIKE ? OR cadastral_number ILIKE ? OR payer_address ILIKE ? OR tax_address ILIKE ?)`;
-            values.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+            values.push(`%${title}%`, `%${title}%`, `%${title}%`, `%${title}%`);
         }
 
         // Додаємо сортування
@@ -53,19 +55,107 @@ class CadasterRepository {
         console.log('🔍 Final SQL:', sql);
         console.log('🔍 Values:', values);
 
-        return await sqlRequest(sql, [...values]);
+        try {
+            return await sqlRequest(sql, [...values]);
+        } catch (error) {
+            console.error('❌ Database error in findCadasterByFilter:', error);
+            throw new Error("Не вдалося виконати запит до бази даних. Будь ласка, спробуйте ще раз пізніше або зверніться до адміністратора системи.");
+        }
+    }
+
+    // Спеціальна функція для WHERE умов таблиці cadaster з підтримкою ILIKE
+    buildCadasterWhereCondition(whereConditions) {
+        const values = [];
+        
+        // Фільтруємо умови, щоб уникнути null/undefined значень
+        const filteredConditions = Object.keys(whereConditions).filter(key => {
+            const value = whereConditions[key];
+            return value !== null && value !== undefined && value !== '';
+        });
+
+        // Якщо після фільтрації не залишилось умов, повертаємо порожню умову
+        if (filteredConditions.length === 0) {
+            return {
+                text: '',
+                value: [],
+            };
+        }
+
+        const conditions = filteredConditions.map(key => {
+            const value = whereConditions[key];
+            
+            // ✅ ILIKE пошук для текстових полів (нечутливий до регістру)
+            if (key === 'payer_name') {
+                values.push(`%${value}%`);
+                return `payer_name ILIKE ?`;
+            }
+            
+            if (key === 'payer_address') {
+                values.push(`%${value}%`);
+                return `payer_address ILIKE ?`;
+            }
+            
+            if (key === 'tax_address') {
+                values.push(`%${value}%`);
+                return `tax_address ILIKE ?`;
+            }
+            
+            if (key === 'cadastral_number') {
+                values.push(`%${value}%`);
+                return `cadastral_number ILIKE ?`;
+            }
+            
+            if (key === 'iban') {
+                values.push(`%${value}%`);
+                return `iban ILIKE ?`;
+            }
+            
+            // Для числових полів - точне співпадіння
+            if (key === 'plot_area' || key === 'land_tax') {
+                values.push(value);
+                return `${key} = ?`;
+            }
+            
+            // Загальний випадок - точне співпадіння
+            values.push(value);
+            return `${key} = ?`;
+
+        }).filter(condition => condition !== null);
+        
+        // Перевіряємо, чи залишились умови після обробки
+        if (conditions.length === 0) {
+            return {
+                text: '',
+                value: [],
+            };
+        }
+        
+        return {
+            text: ' AND ' + conditions.join(' AND '),
+            value: values,
+        };
     }
 
     async getCadasterById(id, displayFields = []) {
         let sql = `SELECT ${displayFields.map(field => ` ${field}`)} FROM ower.cadaster_records WHERE id = ?`;
-        return await sqlRequest(sql, [id]);
+        try {
+            return await sqlRequest(sql, [id]);
+        } catch (error) {
+            console.error('❌ Database error in getCadasterById:', error);
+            throw new Error("Не вдалося отримати кадастровий запис.");
+        }
     }
 
     async createCadaster(cadasterData) {
         const sql = `INSERT INTO ower.cadaster_records (${Object.keys(cadasterData).map(field => `${field}`).join(", ")}) 
                      VALUES (${Object.keys(cadasterData).map(el => '?').join(", ")}) 
                      RETURNING id`;
-        return await sqlRequest(sql, [...Object.values(cadasterData)]);
+        try {
+            return await sqlRequest(sql, [...Object.values(cadasterData)]);
+        } catch (error) {
+            console.error('❌ Database error in createCadaster:', error);
+            throw new Error("Не вдалося створити кадастровий запис.");
+        }
     }
 
     async updateCadasterById(id, cadasterData) {
@@ -73,11 +163,33 @@ class CadasterRepository {
                    SET ${Object.keys(cadasterData).map(field => `${field} = ?`).join(', ')}
                    WHERE id = ? 
                    RETURNING id`;
-        return await sqlRequest(sql, [...Object.values(cadasterData), id]);
+        try {
+            return await sqlRequest(sql, [...Object.values(cadasterData), id]);
+        } catch (error) {
+            console.error('❌ Database error in updateCadasterById:', error);
+            throw new Error("Не вдалося оновити кадастровий запис.");
+        }
     }
 
     async deleteCadasterById(id) {
-        return await sqlRequest('DELETE FROM ower.cadaster_records WHERE id = ? RETURNING id', [id]);
+        try {
+            return await sqlRequest('DELETE FROM ower.cadaster_records WHERE id = ? RETURNING id', [id]);
+        } catch (error) {
+            console.error('❌ Database error in deleteCadasterById:', error);
+            throw new Error("Не вдалося видалити кадастровий запис.");
+        }
+    }
+
+    // Метод для отримання кадастрового номера по ПІБ платника
+    async getCadastralNumberByPayerName(payerName) {
+        const sql = `SELECT cadastral_number FROM ower.cadaster_records WHERE payer_name = ? ORDER BY id DESC LIMIT 1`;
+        try {
+            const result = await sqlRequest(sql, [payerName]);
+            return result.length > 0 ? result[0].cadastral_number : null;
+        } catch (error) {
+            console.error('❌ Database error in getCadastralNumberByPayerName:', error);
+            return null;
+        }
     }
 
     // Метод для масового завантаження кадастрових записів з Excel файлу
@@ -109,76 +221,31 @@ class CadasterRepository {
             };
 
         } catch (error) {
-            console.error('❌ Помилка масового вставлення:', error);
-            throw error;
+            console.error('❌ Помилка масового завантаження:', error);
+            throw new Error("Помилка масового завантаження кадастрових записів.");
         }
     }
 
     async insertCadasterBatch(batch) {
-        if (!batch.length) return 0;
-
-        // Генеруємо VALUES для batch insert
-        const valueGroups = [];
-        const allParams = [];
-        let paramIndex = 1;
-
-        batch.forEach(record => {
-            const groupPlaceholders = [];
-            for (let i = 0; i < 8; i++) { // 8 полів для вставки
-                groupPlaceholders.push(`$${paramIndex++}`);
-            }
-            valueGroups.push(`(${groupPlaceholders.join(', ')})`);
+        try {
+            let inserted = 0;
             
-            allParams.push(
-                record.payer_name || null,
-                record.payer_address || null,
-                record.iban || null,
-                record.plot_area || 0,
-                record.land_tax || 0,
-                record.tax_address || null,
-                record.cadastral_number || null,
-                record.uid || null
-            );
-        });
-
-        // ВИБІР ЛОГІКИ ОБРОБКИ КОНФЛІКТІВ:
-        // Варіант 1: НЕ оновлювати існуючі записи (поточна поведінка)
-        const sqlDoNothing = `
-        INSERT INTO ower.cadaster_records (
-            payer_name, payer_address, iban, plot_area,
-            land_tax, tax_address, cadastral_number, uid
-        ) VALUES ${valueGroups.join(', ')}
-        ON CONFLICT (cadastral_number) DO NOTHING
-        `;
-
-        // Варіант 2: Оновлювати існуючі записи (альтернативна поведінка)
-        const sqlDoUpdate = `
-        INSERT INTO ower.cadaster_records (
-            payer_name, payer_address, iban, plot_area,
-            land_tax, tax_address, cadastral_number, uid
-        ) VALUES ${valueGroups.join(', ')}
-        ON CONFLICT (cadastral_number) DO UPDATE SET
-            payer_name = EXCLUDED.payer_name,
-            payer_address = EXCLUDED.payer_address,
-            iban = EXCLUDED.iban,
-            plot_area = EXCLUDED.plot_area,
-            land_tax = EXCLUDED.land_tax,
-            tax_address = EXCLUDED.tax_address,
-            updated_at = NOW()
-        WHERE cadaster_records.cadastral_number IS NOT NULL
-        `;
-
-        // ВИКОРИСТОВУЄМО ВАРІАНТ 1 (НЕ оновлювати)
-        // Якщо потрібно оновлювати дані, замініть sqlDoNothing на sqlDoUpdate
-        const result = await sqlRequest(sqlDoNothing, allParams);
-        return batch.length; // Повертаємо кількість оброблених записів
+            for (const record of batch) {
+                try {
+                    await this.createCadaster(record);
+                    inserted++;
+                } catch (error) {
+                    console.error('❌ Помилка вставки запису:', error);
+                    // Продовжуємо обробку інших записів
+                }
+            }
+            
+            return inserted;
+        } catch (error) {
+            console.error('❌ Помилка батч вставки:', error);
+            return 0;
+        }
     }
-
-    // Очищення таблиці кадастрових записів (опціонально)
-    async truncateCadaster() {
-        return await sqlRequest('TRUNCATE TABLE ower.cadaster_records RESTART IDENTITY', []);
-    }
-
 }
 
 module.exports = new CadasterRepository();

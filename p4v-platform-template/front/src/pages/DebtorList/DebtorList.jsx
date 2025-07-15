@@ -166,6 +166,23 @@ const DebtorList = () => {
                         </span>
                     );
                 }, '80px'),
+                createSortableColumn('Кадастр. номер', 'cadastral_number', (value) => {
+                    const isValidCadastral = value && 
+                                            value !== null && 
+                                            value !== '' && 
+                                            !value.includes('AUTO_') && 
+                                            value.length > 5;
+                        
+                        return isValidCadastral ? (
+                            <span style={{ fontSize: '12px', color: '#666' }}>
+                                {value}
+                            </span>
+                        ) : (
+                            <span style={{ fontSize: '11px', color: '#bbb', fontStyle: 'italic' }}>
+                                Інформація не надана
+                            </span>
+                        );
+                    }, '120px'),
                 {
                     title: 'Дія',
                     dataIndex: 'action',
@@ -288,6 +305,7 @@ const DebtorList = () => {
                         mpz: el.mpz,
                         identification: el.identification,
                         total_debt: totalDebt,
+                        cadastral_number: el.cadastral_number,
                     }
                 });
                 console.log('tableData result:', result[0]); // Фінальний дебаг
