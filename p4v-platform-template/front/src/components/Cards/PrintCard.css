@@ -67,3 +67,11 @@ font-size: 12px;
     gap: 10px;
     margin-top: 10px;
 }
+
+.print-card__cadastral {
+    font-weight: bold;
+    font-style: italic;
+    font-size: 12px;
+    margin-top: 5px;
+    color: #666;
+}

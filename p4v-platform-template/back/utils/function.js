@@ -284,14 +284,22 @@ const addRequisiteToLandDebt = (body, requisite) => {
     }
 
     if (body?.land_debt > 0) {
+        // Формуємо текст заборгованості з податковою адресою
+        let debtText = `Заборгованість зі сплати земельному податку з фізичних осіб в сумі ${body.land_debt} грн.`;
+        
+        // Додаємо податкову адресу якщо вона є
+        if (body.tax_address && body.tax_address.trim() !== '') {
+            debtText += ` Податкова адреса платника: ${body.tax_address}.`;
+        }
+        
         addDebtInfo(
-            `Заборгованість зі сплати земельному податку з фізичних осіб в сумі ${body.land_debt} грн.`,
+            debtText,
             "Реквізити для оплати :",
             requisite.land_debt_recipientname,
             requisite.land_debt_edrpou,
             requisite.land_debt_account,
             '18010700',
-	    body.land_debt);
+            body.land_debt);
     }
 
     if (body?.orenda_debt > 0) {

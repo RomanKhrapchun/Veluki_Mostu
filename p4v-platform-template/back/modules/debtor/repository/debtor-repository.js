@@ -11,26 +11,42 @@ class DebtorRepository {
         try {
             const debtorData = await sqlRequest(sql, [debtId]);
             
-            // Якщо знайдено боржника і потрібен кадастровий номер
+            // Якщо знайдено боржника і потрібна кадастрова інформація
             if (debtorData.length > 0 && displayFieldsUsers.includes('cadastral_number')) {
                 const debtorName = debtorData[0].name;
                 
-                // ✅ ВИПРАВЛЕНО: Отримуємо кадастровий номер з фільтрацією AUTO номерів
-                const cadastralSql = `SELECT cadastral_number 
+                // Шукаємо кадастрову інформацію (номер або адреса можуть бути окремо)
+                const cadastralSql = `SELECT cadastral_number, tax_address 
                                     FROM ower.cadaster_records 
                                     WHERE payer_name = ? 
-                                        AND cadastral_number IS NOT NULL 
-                                        AND cadastral_number != '' 
-                                        AND cadastral_number NOT LIKE 'AUTO_%'
-                                        AND LENGTH(cadastral_number) > 5
+                                        AND (
+                                            (cadastral_number IS NOT NULL 
+                                            AND cadastral_number != '' 
+                                            AND cadastral_number NOT LIKE 'AUTO_%'
+                                            AND LENGTH(cadastral_number) > 5)
+                                            OR 
+                                            (tax_address IS NOT NULL 
+                                            AND tax_address != '')
+                                        )
                                     ORDER BY id DESC LIMIT 1`;
                 const cadastralResult = await sqlRequest(cadastralSql, [debtorName]);
                 
-                // Додаємо кадастровий номер до результату
+                // Додаємо кадастрову інформацію до результату
                 if (cadastralResult.length > 0) {
-                    debtorData[0].cadastral_number = cadastralResult[0].cadastral_number;
+                    // Кадастровий номер - тільки якщо він валідний
+                    const validCadastralNumber = cadastralResult[0].cadastral_number && 
+                                            cadastralResult[0].cadastral_number.trim() !== '' &&
+                                            !cadastralResult[0].cadastral_number.startsWith('AUTO_') &&
+                                            cadastralResult[0].cadastral_number.length > 5;
+                    
+                    debtorData[0].cadastral_number = validCadastralNumber ? cadastralResult[0].cadastral_number : null;
+                    
+                    // Податкова адреса - завжди якщо є
+                    debtorData[0].tax_address = cadastralResult[0].tax_address && cadastralResult[0].tax_address.trim() !== '' 
+                                            ? cadastralResult[0].tax_address : null;
                 } else {
                     debtorData[0].cadastral_number = null;
+                    debtorData[0].tax_address = null;
                 }
             }
             

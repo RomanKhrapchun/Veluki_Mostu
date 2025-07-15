@@ -182,7 +182,8 @@ class DebtorService {
                     name: fetchData[0].name,
                     date: fetchData[0].date,
                     identification: fetchData[0].identification,
-                    cadastral_number: fetchData[0].cadastral_number, // Додаємо кадастровий номер до відповіді
+                    cadastral_number: fetchData[0].cadastral_number,
+                    tax_address: fetchData[0].tax_address,
                     debt: result
                 });
             }

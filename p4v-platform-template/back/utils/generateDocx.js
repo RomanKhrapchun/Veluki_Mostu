@@ -42,10 +42,6 @@ const addRow = (body) => {
 
 };
 
-
-
-
-
 const createRequisiteWord = async (body, requisite) => {
     try {
         console.log("body", body);
@@ -67,7 +63,7 @@ const createRequisiteWord = async (body, requisite) => {
             totalAmount += parseFloat(debt.amount || 0); // Додаємо до загальної суми
 
             return [
-		new Paragraph({ children: [new TextRun({ text: " " })] }),
+		    new Paragraph({ children: [new TextRun({ text: " " })] }),
                 new Paragraph({
                     alignment: AlignmentType.LEFT,
                     children: [
@@ -126,7 +122,21 @@ const createRequisiteWord = async (body, requisite) => {
                             new TextRun({ text: `і.к. ХХХХХХХ${body.identification}`, font: "Times New Roman", size: 24, bold: true, italics: true })
                         ],
                         alignment: AlignmentType.RIGHT
-                    })
+                    }),
+                    // Додаємо кадастровий номер якщо він є
+                    ...(body.cadastral_number && body.cadastral_number.trim() !== '' ? [
+                        new Paragraph({
+                            children: [
+                                new TextRun({ 
+                                    text: `Кадастровий номер: ${body.cadastral_number}`, 
+                                    font: "Times New Roman", 
+                                    size: 22,
+                                    italics: true
+                                })
+                            ],
+                            alignment: AlignmentType.RIGHT
+                        })
+                    ] : [])
                 ],
             },
             debt_info: {
@@ -331,9 +341,6 @@ const createRequisiteWord = async (body, requisite) => {
     }
 };
 
-
-
-
 const createUtilitiesRequisiteWord = async (body, requisite) => {
     try {
         if (!Array.isArray(body)) {
@@ -414,7 +421,21 @@ const createUtilitiesRequisiteWord = async (body, requisite) => {
                             new TextRun({ text: `і.к. ${body[0].payerident}`, font: "Times New Roman", size: 24, bold: true, italics: true })
                         ],
                         alignment: AlignmentType.CENTER
-                    })
+                    }),
+                    // Додаємо кадастровий номер якщо він є
+                    ...(body[0].cadastral_number && body[0].cadastral_number.trim() !== '' ? [
+                        new Paragraph({
+                            children: [
+                                new TextRun({ 
+                                    text: `Кадастровий номер: ${body[0].cadastral_number}`, 
+                                    font: "Times New Roman", 
+                                    size: 22,
+                                    italics: true
+                                })
+                            ],
+                            alignment: AlignmentType.CENTER
+                        })
+                    ] : [])
                 ],
             },
             debt_info: {
@@ -1429,17 +1450,9 @@ const convertNumberToWords = (amount) => {
     return `${grnText} грн. ${kopText} коп.`;
 };
 
-
 // Експортуємо нову функцію разом з існуючими
 module.exports = {
     createRequisiteWord,
     createUtilitiesRequisiteWord,
     createTaxNotificationWord  // НОВА ФУНКЦІЯ
 }
-
-
-
-
-
-
-

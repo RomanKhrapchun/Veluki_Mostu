@@ -238,18 +238,15 @@ const CadasterList = () => {
             }
         }))
     }
-
+    
     const resetFilters = () => {
-        // Очищаємо selectData
         if (Object.values(stateCadaster.selectData).some(value => value)) {
             setStateCadaster(prevState => ({
                 ...prevState,
                 selectData: {},
             }));
         }
-        
-        // Очищаємо sendData від фільтрів
-        const dataReadyForSending = hasOnlyAllowedParams(stateCadaster.sendData, ['limit', 'page', 'sort_by', 'sort_direction']);
+        const dataReadyForSending = hasOnlyAllowedParams(stateCadaster.sendData, ['limit', 'page', 'sort_by', 'sort_direction'])
         if (!dataReadyForSending) {
             setStateCadaster(prevState => ({
                 ...prevState,
@@ -259,41 +256,37 @@ const CadasterList = () => {
                     sort_by: prevState.sendData.sort_by,
                     sort_direction: prevState.sendData.sort_direction,
                 }
-            }));
+            }))
         }
     }
-
     const applyFilter = () => {
-        const isAnyInputFilled = Object.values(stateCadaster.selectData).some(value => {
-            if (Array.isArray(value) && !value.length) {
-                return false
+        const filtersToApply = {};
+        
+        // Додаємо лише непорожні фільтри
+        Object.keys(stateCadaster.selectData).forEach(key => {
+            const value = stateCadaster.selectData[key];
+            if (value && value !== '') {
+                filtersToApply[key] = value;
             }
-            return value
-        })
-        if (isAnyInputFilled) {
-            const dataValidation = validateFilters(stateCadaster.selectData)
-            if (!dataValidation.error) {
-                setStateCadaster(prevState => ({
-                    ...prevState,
-                    sendData: {
-                        ...dataValidation,
-                        limit: prevState.sendData.limit,
-                        page: 1,
-                        sort_by: prevState.sendData.sort_by,
-                        sort_direction: prevState.sendData.sort_direction,
-                    },
-                    isFilterOpen: false,
-                }))
-            } else {
-                notification({
-                    type: 'warning',
-                    placement: 'top',
-                    title: 'Помилка',
-                    message: dataValidation.message ?? 'Щось пішло не так.',
-                })
+        });
+        
+        setStateCadaster(prevState => ({
+            ...prevState,
+            sendData: {
+                ...prevState.sendData,
+                ...filtersToApply,
+                page: 1,
+                // Видаляємо всі фільтри, які не в filtersToApply
+                payer_name: filtersToApply.payer_name || undefined,
+                payer_address: filtersToApply.payer_address || undefined,
+                tax_address: filtersToApply.tax_address || undefined,
+                cadastral_number: filtersToApply.cadastral_number || undefined,
+                iban: filtersToApply.iban || undefined,
             }
-        }
-    }
+        }));
+        
+        closeFilterDropdown();
+    };
 
     // Пагінація
     const onPageChange = useCallback((newPage) => {
@@ -669,6 +662,18 @@ const CadasterList = () => {
     const columnTable = useMemo(() => {
         const startRecord = ((stateCadaster.sendData.page || 1) - 1) * stateCadaster.sendData.limit + 1;
 
+        // Використовуємо ту ж структуру, що і в DebtorList.jsx
+        const createSortableColumn = (title, dataIndex, render = null, width = null) => ({
+            title,
+            dataIndex,
+            sortable: true,
+            onHeaderClick: () => handleSort(dataIndex),
+            sortIcon: getSortIcon(dataIndex),
+            headerClassName: stateCadaster.sendData.sort_by === dataIndex ? 'active' : '',
+            ...(width && { width }),
+            ...(render && { render })
+        });
+
         return [
             {
                 title: '№',
@@ -716,7 +721,8 @@ const CadasterList = () => {
                 ),
             },
         ];
-    }, [startRecord, handleViewClick, handleEditClick, handleDeleteClick, createSortableColumn]);
+    }, [stateCadaster.sendData.page, stateCadaster.sendData.limit, stateCadaster.sendData.sort_by, 
+        handleViewClick, handleEditClick, handleDeleteClick, handleSort, getSortIcon]);
 
     // Рендер таблиці даних
     const tableData = useMemo(() => {

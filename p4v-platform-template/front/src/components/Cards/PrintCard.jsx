@@ -53,65 +53,77 @@ const PrintCard = () => {
                         <div className="print-card__header">
                             <p className="print-card__name">{data.name}</p>
                             <p className="print-card__id">і.к. ХХХХХХХ{data?.identification}</p>
+                            {/* Додаємо кадастровий номер ТІЛЬКИ якщо він є та валідний */}
+                            {data?.cadastral_number && 
+                             data.cadastral_number.trim() !== '' && 
+                             !data.cadastral_number.startsWith('AUTO_') &&
+                             data.cadastral_number.length > 5 && (
+                                <p className="print-card__cadastral">Кадастровий номер: {data.cadastral_number}</p>
+                            )}
                         </div>
                         <div className="print-card__title">Інформаційне повідомлення</div>
                         <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{territory_title} повідомляє, що відповідно до даних ГУ ДПС у {GU_DPS_region},
                             станом {formatDateUa(data.date)} у Вас наявна заборгованість до бюджету {territory_title_instrumental},&nbsp; а саме:
                         </p>
-                        {data.debt && Array.isArray(data.debt) && data.debt.length ? (
-                            data.debt.map((innerArray, index) => (
-                                innerArray.map((el, innerIndex) => (
-                                    <div className="print-card__content" key={`${index}-${innerIndex}`}>
-                                        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{el.debtText}</p>
-                                        <p className="print-card__payment-title">{el.requisiteText}</p>
-                                        <table className="print-card__table">
-                                            <tbody>
-                                            {el.table.map((cell, cellIndex) => (
-                                                <tr className="print-card__table-row" key={cellIndex}>
-                                                    <td className="print-card__table-cell">
-                                                        <p><strong>{cell.label}</strong></p>
-                                                    </td>
-                                                    <td className="print-card__table-cell">
-                                                        <p>{cell.value}</p>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ))
-                            ))
-                        ) : null}
-                        <p>&nbsp;</p>
-                        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;В разі виникнення питань по даній заборгованості, звертатись у ГУ ДПС у {GU_DPS_region} за номером телефона {phone_number_GU_DPS}.</p>
-                        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Просимо терміново погасити утворену Вами податкову заборгованість до бюджету {territory_title_instrumental}. Несвоєчасна сплата суми заборгованості призведе до нарахувань
-                            штрафних санкцій та пені.</p>
-                        <p>&nbsp;</p>
-                        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Перевірити заборгованість можна у застосунках &laquo;{website_name}&raquo;
-                            <a href={website_url} target={"_blank"}>{website_url}</a> та чат - бот в Telegram &laquo;{telegram_name}&raquo; <a href={telegram_url} target={"_blank"}>{telegram_url}</a>, які надають
-                            можливість миттєвого отримання актуальної інформації про стан заборгованості по податках і зборах перед бюджетом
-                            {territory_title_instrumental}, реквізити для сплати та можливість оплатити онлайн, або за QR &ndash; кодом, який розміщений нижче.
+                        {data.debt && Array.isArray(data.debt) && data.debt.length ?
+                            data.debt.map((debt, debtIndex) => (
+                                <React.Fragment key={debtIndex}>
+                                    {debt.map((item, itemIndex) => (
+                                        <React.Fragment key={itemIndex}>
+                                            <p className="print-card__payment-title">
+                                                {debtIndex + 1}.&nbsp;{item.debtText}
+                                            </p>
+                                            <div className="print-card__content">
+                                                <h4>{item.requisiteText}</h4>
+                                                <table className="print-card__table">
+                                                    <tbody>
+                                                    {item.table.map((row, index) => (
+                                                        <tr key={index}>
+                                                            <td className="print-card__table-cell">{row.label}</td>
+                                                            <td className="print-card__table-cell">{row.value}</td>
+                                                        </tr>
+                                                    ))}
+                                                    <tr>
+                                                        <td className="print-card__table-cell"><strong>Сума</strong></td>
+                                                        <td className="print-card__table-cell"><strong>{item.amount} грн</strong></td>
+                                                    </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </React.Fragment>
+                                    ))}
+                                </React.Fragment>
+                            )) : null}
+                        <p>
+                            В разі виникнення питань по даній заборгованості, звертайтесь у ГУ ДПС у {GU_DPS_region} за номером телефона {phone_number_GU_DPS}.
                         </p>
-                        <div>
-                            <img src={logo} width={100} height={100} alt={alt_qr_code}/>
-                        </div>
-                        <div className="print-card__buttons" ref={ref}>
-                            <Button
-                                icon={backIcon}
-                                onClick={() => navigate('/debtor')}>
-                                Повернутись
-                            </Button>
-                            <Button
-                                icon={printIcon}
-                                onClick={handlePrint}>
-                                Друк
-                            </Button>
+                        <p>
+                            Просимо терміново погасити утворену Вами заборгованість до бюджету {territory_title_instrumental}. Несвоєчасна сплата суми
+                            заборгованості призведе до нарахувань штрафних санкцій та пені.
+                        </p>
+                        <p>
+                            Перевірити заборгованість можна у застосунках <a
+                            href={website_url}>«{website_name}»</a> або
+                            через чат-бот в Telegram <a href={telegram_url}>«{telegram_name}»</a>. Вони дозволяють
+                            отримати актуальну інформацію щодо стану вашої заборгованості та оплатити її онлайн за
+                            допомогою QR-коду, що розміщений нижче.
+                        </p>
+                        <div style={{display: 'flex', justifyContent: 'flex-end'}}>
+                            <img src={logo} alt={alt_qr_code} style={{width: 128, height: 128}}/>
                         </div>
                     </div>
+                    <div className="print-card__buttons" ref={ref}>
+                        <Button onClick={() => navigate('/debtor')} icon={backIcon}>
+                            Повернутись до реєстру
+                        </Button>
+                        <Button onClick={handlePrint} icon={printIcon}>
+                            Роздрукувати
+                        </Button>
+                    </div>
                 </React.Fragment>
-            ) : null
-            }
-        </React.Fragment>)
+            ) : null}
+        </React.Fragment>
+    );
 };
 
 export default PrintCard;
