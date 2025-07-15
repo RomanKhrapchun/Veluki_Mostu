@@ -63,7 +63,7 @@ const createRequisiteWord = async (body, requisite) => {
             totalAmount += parseFloat(debt.amount || 0); // Додаємо до загальної суми
 
             return [
-		    new Paragraph({ children: [new TextRun({ text: " " })] }),
+                new Paragraph({ children: [new TextRun({ text: " " })] }),
                 new Paragraph({
                     alignment: AlignmentType.LEFT,
                     children: [
@@ -77,27 +77,20 @@ const createRequisiteWord = async (body, requisite) => {
                 new Paragraph({
                     alignment: AlignmentType.CENTER,
                     children: [
-                        new TextRun({ text: `{{requisiteText${index}}}`, font: "Times New Roman", size: 26 }),
+                        new TextRun({ text: debt.requisiteText, font: "Times New Roman", size: 26 }),
                     ],
                 }),
+                // Замість таблиці тепер виводимо простий рядок
                 new Paragraph({
                     alignment: AlignmentType.LEFT,
                     children: [
-                        new TextRun({ text: `{{table${index}}}`, font: "Times New Roman", size: 26 }),
-                    ],
-                }),
-                /*new Paragraph({
-                    alignment: AlignmentType.RIGHT,
-                    children: [
-                        new TextRun({
-                            text: `Загальна сума боргу по цій таблиці: ${debt.amount} грн`,
-                            font: "Times New Roman",
-                            size: 26,
-                            bold: true
+                        new TextRun({ 
+                            text: debt.recipientInfo, 
+                            font: "Times New Roman", 
+                            size: 26 
                         }),
                     ],
-                }),*/
-                //new Paragraph({ children: [new TextRun({ text: " " })] }),
+                })
             ];
         }).flat();
 
@@ -123,119 +116,252 @@ const createRequisiteWord = async (body, requisite) => {
                         ],
                         alignment: AlignmentType.RIGHT
                     }),
-                    // Додаємо кадастровий номер якщо він є
-                    ...(body.cadastral_number && body.cadastral_number.trim() !== '' ? [
-                        new Paragraph({
-                            children: [
-                                new TextRun({ 
-                                    text: `Кадастровий номер: ${body.cadastral_number}`, 
-                                    font: "Times New Roman", 
-                                    size: 22,
-                                    italics: true
-                                })
-                            ],
-                            alignment: AlignmentType.RIGHT
-                        })
-                    ] : [])
-                ],
-            },
-            debt_info: {
-                type: PatchType.DOCUMENT,
-                children: [
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: `          ${territory_title} повідомляє, що відповідно до даних ГУ ДПС у ${GU_DPS_region}, станом ${new Intl.DateTimeFormat('uk-UA', {
-                                    day: '2-digit',
-                                    month: 'long',
-                                    year: 'numeric',
-                                }).format(new Date(body.date))} у Вас наявна заборгованість до бюджету ${territory_title_instrumental},  а саме:`,
-                                font: "Times New Roman",
-                                size: 26
-                            })
-                        ],
-                    })
-                ],
-            },
-            gu_dps: {
-                type: PatchType.DOCUMENT,
-                children: [
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: `          В разі виникнення питань по даній заборгованості, звертайтесь у ГУ ДПС у ${GU_DPS_region} за номером телефона ${phone_number_GU_DPS}.`,
-                                font: "Times New Roman",
-                                size: 24
-                            })
-                        ],
-                        alignment: AlignmentType.LEFT
-                    })
-                ],
-            },
-            sanction_info: {
-                type: PatchType.DOCUMENT,
-                children: [
-                    new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: `          Просимо терміново погасити утворену Вами заборгованість до бюджету ${territory_title_instrumental}. Несвоєчасна сплата суми заборгованості призведе до нарахувань штрафних санкцій та пені.`,
-                                font: "Times New Roman",
-                                size: 24
-                            })
-                        ],
-                        alignment: AlignmentType.LEFT
-                    })
-                ],
-            },
-            footer_info: {
-                type: PatchType.DOCUMENT,
-                children: [
-                    new Paragraph({
-                        children: [
-                            new TextRun({ text: `          Перевірити заборгованість можна у застосунках «${website_name}» `, font: "Times New Roman", size: 24 }),
-                            new ExternalHyperlink({
+                    // Логіка: спочатку перевіряємо кадастровий номер
+                    ...((() => {
+                        const paragraphs = [];
+                        
+                        // Перевіряємо чи є ВАЛІДНИЙ кадастровий номер
+                        const hasValidCadastralNumber = body.cadastral_number && 
+                                                    body.cadastral_number.trim() !== '' && 
+                                                    !body.cadastral_number.startsWith('AUTO_') &&
+                                                    body.cadastral_number.length > 5;
+                        
+                        if (hasValidCadastralNumber) {
+                            // Якщо є кадастровий номер - показуємо тільки його
+                            paragraphs.push(new Paragraph({
                                 children: [
-                                    new TextRun({
-                                        text: website_url,
-                                        font: "Times New Roman",
-                                        size: 24,
-                                        color: "0000FF",
-                                        underline: {}
-                                    }),
+                                    new TextRun({ 
+                                        text: `Кадастровий номер: ${body.cadastral_number}`, 
+                                        font: "Times New Roman", 
+                                        size: 22,
+                                        italics: true
+                                    })
                                 ],
-                                link: website_url,
-                            }),
-                            new TextRun({ text: ` або через чат-бот в Telegram «${telegram_name}» `, font: "Times New Roman", size: 24 }),
-                            new ExternalHyperlink({
+                                alignment: AlignmentType.RIGHT
+                            }));
+                        } else if (body.tax_address && body.tax_address.trim() !== '') {
+                            // Якщо немає кадастрового номера, але є податкова адреса - показуємо адресу
+                            paragraphs.push(new Paragraph({
                                 children: [
-                                    new TextRun({
-                                        text: telegram_url,
-                                        font: "Times New Roman",
-                                        size: 24,
-                                        color: "0000FF",
-                                        underline: {}
-                                    }),
+                                    new TextRun({ 
+                                        text: `Податкова адреса: ${body.tax_address}`, 
+                                        font: "Times New Roman", 
+                                        size: 22,
+                                        italics: true
+                                    })
                                 ],
-                                link: telegram_url,
-                            }),
-                            new TextRun({ text: `. Вони дозволяють отримати актуальну інформацію щодо стану вашої заборгованості та оплатити її онлайн за допомогою QR-коду, що розміщений нижче.`, font: "Times New Roman", size: 24 }),
-                        ],
-                        alignment: AlignmentType.LEFT
-                    })
+                                alignment: AlignmentType.RIGHT
+                            }));
+                        }
+                        // Якщо немає ні кадастрового номера, ні адреси - нічого не додаємо
+                        
+                        return paragraphs;
+                    })())
                 ],
             },
-            image: {
+            // Додаємо загальну суму внизу
+            total: {
                 type: PatchType.DOCUMENT,
                 children: [
                     new Paragraph({
                         children: [
-                            new ImageRun({
-                                data: await fs.readFile("./files/qr-code.png"),
-                                transformation: {
-                                    width: 128,
-                                    height: 128,
-                                },
-                            }),
+                            new TextRun({ 
+                                text: `Загальна сума заборгованості: ${totalAmount.toFixed(2)} грн.`, 
+                                font: "Times New Roman", 
+                                size: 26, 
+                                bold: true 
+                            })
+                        ],
+                        alignment: AlignmentType.RIGHT
+                    })
+                ],
+            }
+        };
+
+        // Перевіряємо, чи дата коректна
+        let formattedDate;
+        try {
+            formattedDate = new Intl.DateTimeFormat('uk-UA', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            }).format(new Date(body.date));
+        } catch (error) {
+            console.warn("❗ Помилка форматування дати. Використовується поточна дата.");
+            formattedDate = new Intl.DateTimeFormat('uk-UA', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            }).format(new Date());
+        }
+
+        patches.date = {
+            type: PatchType.DOCUMENT,
+            children: [
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: formattedDate, font: "Times New Roman", size: 26 })
+                    ],
+                    alignment: AlignmentType.RIGHT
+                })
+            ],
+        };
+
+        const patchedDoc = await patchDocument(docBuffer, patches);
+        return patchedDoc;
+    } catch (error) {
+        console.error('❌ Помилка під час створення документа:', error.message);
+        return false;
+    }
+};
+
+// Оновлена функція createWaterRequisiteWord
+const createWaterRequisiteWord = async (body, requisite) => {
+    try {
+        if (!Array.isArray(body)) {
+            throw new Error("body має бути масивом");
+        }
+
+        const debts = body.map(item => {
+            const result = addRequisiteToWaterDebt(item, requisite);
+            if (!result) {
+                console.warn("⚠️ Попередження: addRequisiteToWaterDebt повернула undefined або некоректний об'єкт для", item);
+            }
+            return result;
+        }).flat().filter(Boolean); // Видаляємо undefined
+
+        console.log("debts", debts);
+
+        const docBuffer = await fs.readFile("./files/docWater.docx");
+
+        const children = debts.map((debt, index) => [
+            new Paragraph({
+                alignment: AlignmentType.LEFT,
+                children: [
+                    new TextRun({ text: debt.debtText, font: "Times New Roman", size: 26 }),
+                ],
+            }),
+            new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                    new TextRun({ text: debt.requisiteText, font: "Times New Roman", size: 26 }),
+                ],
+            }),
+            // Замість таблиці тепер виводимо простий рядок
+            new Paragraph({
+                alignment: AlignmentType.LEFT,
+                children: [
+                    new TextRun({ 
+                        text: debt.recipientInfo, 
+                        font: "Times New Roman", 
+                        size: 26 
+                    }),
+                ],
+            }),
+        ]).flat();
+
+        // Перевіряємо, чи дата коректна
+        let formattedDate;
+        try {
+            formattedDate = new Intl.DateTimeFormat('uk-UA', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            }).format(new Date(body[0].date));
+        } catch (error) {
+            console.warn("❗ Помилка форматування дати. Використовується поточна дата.");
+            formattedDate = new Intl.DateTimeFormat('uk-UA', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            }).format(new Date());
+        }
+
+        const patches = {
+            next: {
+                type: PatchType.DOCUMENT,
+                children,
+            },
+            name: {
+                type: PatchType.DOCUMENT,
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: body[0].fio, font: "Times New Roman", size: 26, bold: true })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    })
+                ],
+            },
+            ident: {
+                type: PatchType.DOCUMENT,
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: `і.к. ХХХХХХХ${body[0].payerident}`, font: "Times New Roman", size: 24, bold: true, italics: true })
+                        ],
+                        alignment: AlignmentType.RIGHT
+                    }),
+                    // Логіка: спочатку перевіряємо кадастровий номер
+                    ...((() => {
+                        const paragraphs = [];
+                        
+                        // Перевіряємо чи є ВАЛІДНИЙ кадастровий номер
+                        const hasValidCadastralNumber = body[0].cadastral_number && 
+                                                    body[0].cadastral_number.trim() !== '' && 
+                                                    !body[0].cadastral_number.startsWith('AUTO_') &&
+                                                    body[0].cadastral_number.length > 5;
+                        
+                        if (hasValidCadastralNumber) {
+                            // Якщо є кадастровий номер - показуємо тільки його
+                            paragraphs.push(new Paragraph({
+                                children: [
+                                    new TextRun({ 
+                                        text: `Кадастровий номер: ${body[0].cadastral_number}`, 
+                                        font: "Times New Roman", 
+                                        size: 22,
+                                        italics: true
+                                    })
+                                ],
+                                alignment: AlignmentType.RIGHT
+                            }));
+                        } else if (body[0].tax_address && body[0].tax_address.trim() !== '') {
+                            // Якщо немає кадастрового номера, але є податкова адреса - показуємо адресу
+                            paragraphs.push(new Paragraph({
+                                children: [
+                                    new TextRun({ 
+                                        text: `Податкова адреса: ${body[0].tax_address}`, 
+                                        font: "Times New Roman", 
+                                        size: 22,
+                                        italics: true
+                                    })
+                                ],
+                                alignment: AlignmentType.RIGHT
+                            }));
+                        }
+                        // Якщо немає ні кадастрового номера, ні адреси - нічого не додаємо
+                        
+                        return paragraphs;
+                    })())
+                ],
+            },
+            adress: {
+                type: PatchType.DOCUMENT,
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: body[0].adress, font: "Times New Roman", size: 26 })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    })
+                ],
+            },
+            date: {
+                type: PatchType.DOCUMENT,
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: formattedDate, font: "Times New Roman", size: 26 })
                         ],
                         alignment: AlignmentType.RIGHT
                     })
@@ -243,100 +369,10 @@ const createRequisiteWord = async (body, requisite) => {
             },
         };
 
-        // Додаємо патчі для кожного об'єкта debt
-        debts.forEach((debt, index) => {
-            patches[`debtText${index}`] = {
-                type: PatchType.PARAGRAPH,
-                children: [
-                    new TextRun({
-                        text: debt.debtText || "❌ ПОМИЛКА: Текст боргу відсутній",
-                        font: "Times New Roman",
-                        size: 26
-                    })
-                ],
-            };
-
-            patches[`requisiteText${index}`] = {
-                type: PatchType.PARAGRAPH,
-                children: [
-                    new TextRun({
-                        text: debt.requisiteText || "❌ ПОМИЛКА: Реквізити відсутні",
-                        font: "Times New Roman",
-                        bold: true,
-                        size: 26
-                    })
-                ],
-            };
-
-             patches[`table${index}`] = {
-                type: PatchType.DOCUMENT,
-                children: [
-                    new Table({
-                        rows: [
-                            ...addRow(debt.table || []),
-                            new TableRow({
-                                children: [
-                                    new TableCell({
-                                        width: { size: 50, type: WidthType.PERCENTAGE },
-                                        children: [
-                                            new Paragraph({
-                                                alignment: AlignmentType.CENTER,
-                                                children: [
-                                                    new TextRun({ 
-                                                        text: "Сума", 
-                                                        font: "Times New Roman", 
-                                                        bold: true, 
-                                                        size: 24 
-                                                    })
-                                                ]
-                                            })
-                                        ],
-                                    }),
-                                    new TableCell({
-                                        width: { size: 50, type: WidthType.PERCENTAGE },
-                                        children: [
-                                            new Paragraph({
-                                                alignment: AlignmentType.CENTER,
-                                                children: [
-                                                    new TextRun({ 
-                                                        text: `${debt.amount} грн`, 
-                                                        font: "Times New Roman",  
-                                                        size: 24
-                                                    })
-                                                ]
-                                            })
-                                        ],
-                                    }),
-                                ],
-                            }),
-                        ]
-                    })
-                ],
-            };
-        });
-
-        // Додаємо загальну суму після циклу
-        patches[`totalAmount`] = {
-            type: PatchType.DOCUMENT,
-            children: [
-                new Paragraph({
-                    alignment: AlignmentType.LEFT,
-                    children: [
-                        new TextRun({
-                            text: `Загальна сума боргу по всіх платежах: ${totalAmount.toFixed(2)} грн`,
-                            font: "Times New Roman",
-                            size: 22, // Менший шрифт
-                            bold: true
-                        }),
-                    ],
-                }),
-            ],
-        };
-
-        const patchedDoc = await patchDocument(docBuffer, { patches });
+        const patchedDoc = await patchDocument(docBuffer, patches);
         return patchedDoc;
     } catch (error) {
-        console.error('❌ Помилка під час створення документа:', error.message);
+        console.error('❌ Помилка під час створення водного документа:', error.message);
         return false;
     }
 };
@@ -580,6 +616,7 @@ const createUtilitiesRequisiteWord = async (body, requisite) => {
 
 // Додати цю функцію до файлу generateDocx.js
 
+// ПОВНА функція createTaxNotificationWord з додання логіки кадастрового номера
 const createTaxNotificationWord = async (charge, settings, debtorInfo = null) => {
     try {
         console.log('📄 Creating tax notification for:', charge.payer_name);
@@ -657,6 +694,66 @@ const createTaxNotificationWord = async (charge, settings, debtorInfo = null) =>
                         size: 22,
                         bold: true
                     })
+                ],
+            },
+
+            // ДОДАНО: Ідентифікація платника з кадастровим номером/адресою
+            payer_identification: {
+                type: PatchType.DOCUMENT,
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({ 
+                                text: `ХХХХХХХ${charge.tax_number || 'НЕ_ВКАЗАНО'}`, 
+                                font: "Times New Roman", 
+                                size: 24, 
+                                bold: true, 
+                                italics: true 
+                            })
+                        ],
+                        alignment: AlignmentType.RIGHT
+                    }),
+                    // ДОДАНО: Логіка кадастрового номера/податкової адреси
+                    ...((() => {
+                        const paragraphs = [];
+                        
+                        // Перевіряємо чи є ВАЛІДНИЙ кадастровий номер
+                        const hasValidCadastralNumber = charge.cadastral_number && 
+                                                      charge.cadastral_number.trim() !== '' && 
+                                                      !charge.cadastral_number.startsWith('AUTO_') &&
+                                                      charge.cadastral_number.length > 5;
+                        
+                        if (hasValidCadastralNumber) {
+                            // Якщо є кадастровий номер - показуємо тільки його
+                            paragraphs.push(new Paragraph({
+                                children: [
+                                    new TextRun({ 
+                                        text: `Кадастровий номер: ${charge.cadastral_number}`, 
+                                        font: "Times New Roman", 
+                                        size: 22,
+                                        italics: true
+                                    })
+                                ],
+                                alignment: AlignmentType.RIGHT
+                            }));
+                        } else if (charge.tax_address && charge.tax_address.trim() !== '') {
+                            // Якщо немає кадастрового номера, але є податкова адреса - показуємо адресу
+                            paragraphs.push(new Paragraph({
+                                children: [
+                                    new TextRun({ 
+                                        text: `Податкова адреса: ${charge.tax_address}`, 
+                                        font: "Times New Roman", 
+                                        size: 22,
+                                        italics: true
+                                    })
+                                ],
+                                alignment: AlignmentType.RIGHT
+                            }));
+                        }
+                        // Якщо немає ні кадастрового номера, ні адреси - нічого не додаємо
+                        
+                        return paragraphs;
+                    })())
                 ],
             },
             

@@ -6,54 +6,56 @@ class DebtorRepository {
 
     async getDebtByDebtorId(debtId, displayFieldsUsers) {
         // Базовий запит для отримання даних боржника
-        let sql = `select ${displayFieldsUsers.map(field => ` ${field === 'cadastral_number' ? 'NULL as cadastral_number' : field}`)} from ower.ower where id = ?`
+        let sql = `select ${displayFieldsUsers.map(field => ` ${field === 'cadastral_number' || field === 'tax_address' ? 'NULL as ' + field : field}`)} from ower.ower where id = ?`
         
         try {
             const debtorData = await sqlRequest(sql, [debtId]);
             
             // Якщо знайдено боржника і потрібна кадастрова інформація
-            if (debtorData.length > 0 && displayFieldsUsers.includes('cadastral_number')) {
+            if (debtorData.length > 0 && (displayFieldsUsers.includes('cadastral_number') || displayFieldsUsers.includes('tax_address'))) {
                 const debtorName = debtorData[0].name;
                 
                 // Шукаємо кадастрову інформацію (номер або адреса можуть бути окремо)
                 const cadastralSql = `SELECT cadastral_number, tax_address 
                                     FROM ower.cadaster_records 
                                     WHERE payer_name = ? 
-                                        AND (
-                                            (cadastral_number IS NOT NULL 
-                                            AND cadastral_number != '' 
-                                            AND cadastral_number NOT LIKE 'AUTO_%'
-                                            AND LENGTH(cadastral_number) > 5)
-                                            OR 
-                                            (tax_address IS NOT NULL 
-                                            AND tax_address != '')
-                                        )
                                     ORDER BY id DESC LIMIT 1`;
                 const cadastralResult = await sqlRequest(cadastralSql, [debtorName]);
                 
+                // Ініціалізуємо поля як null
+                debtorData[0].cadastral_number = null;
+                debtorData[0].tax_address = null;
+                
                 // Додаємо кадастрову інформацію до результату
                 if (cadastralResult.length > 0) {
-                    // Кадастровий номер - тільки якщо він валідний
+                    // Перевіряємо чи є валідний кадастровий номер
                     const validCadastralNumber = cadastralResult[0].cadastral_number && 
                                             cadastralResult[0].cadastral_number.trim() !== '' &&
                                             !cadastralResult[0].cadastral_number.startsWith('AUTO_') &&
                                             cadastralResult[0].cadastral_number.length > 5;
                     
-                    debtorData[0].cadastral_number = validCadastralNumber ? cadastralResult[0].cadastral_number : null;
+                    // Перевіряємо чи є податкова адреса
+                    const validTaxAddress = cadastralResult[0].tax_address && 
+                                        cadastralResult[0].tax_address.trim() !== '';
                     
-                    // Податкова адреса - завжди якщо є
-                    debtorData[0].tax_address = cadastralResult[0].tax_address && cadastralResult[0].tax_address.trim() !== '' 
-                                            ? cadastralResult[0].tax_address : null;
-                } else {
-                    debtorData[0].cadastral_number = null;
-                    debtorData[0].tax_address = null;
+                    // Логіка відповідно до вимог:
+                    if (validCadastralNumber) {
+                        // 1. Якщо є валідний кадастровий номер - записуємо тільки його
+                        debtorData[0].cadastral_number = cadastralResult[0].cadastral_number;
+                        // tax_address залишається null
+                    } else if (validTaxAddress) {
+                        // 2. Якщо немає кадастрового номера, але є податкова адреса - записуємо тільки адресу
+                        debtorData[0].tax_address = cadastralResult[0].tax_address;
+                        // cadastral_number залишається null
+                    }
+                    // 3. Якщо немає ні номера, ні адреси - обидва поля залишаються null
                 }
             }
             
             return debtorData;
         } catch (error) {
             console.error('❌ Database error in getDebtByDebtorId:', error);
-            throw error;
+            throw new Error("Не вдалося отримати дані боржника.");
         }
     }
 

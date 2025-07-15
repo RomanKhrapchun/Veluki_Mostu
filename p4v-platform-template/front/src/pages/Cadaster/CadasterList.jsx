@@ -410,12 +410,15 @@ const CadasterList = () => {
             newErrors.land_tax = 'Земельний податок повинен бути більше 0';
         }
 
+        // Оновлена валідація: податкова адреса залишається обов'язковою
         if (!formData.tax_address.trim()) {
             newErrors.tax_address = 'Податкова адреса є обов\'язковою';
         }
 
-        if (!formData.cadastral_number.trim()) {
-            newErrors.cadastral_number = 'Кадастровий номер є обов\'язковим';
+        // Оновлена валідація: кадастровий номер тепер не є обов'язковим
+        // Але якщо він вводиться, то має бути валідним
+        if (formData.cadastral_number.trim() && formData.cadastral_number.length <= 5) {
+            newErrors.cadastral_number = 'Кадастровий номер має бути довше 5 символів';
         }
 
         return newErrors;
