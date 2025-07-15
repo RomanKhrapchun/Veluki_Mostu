@@ -7,7 +7,7 @@ import Button from "../../components/common/Button/Button";
 import PageError from "../ErrorPage/PageError";
 import Pagination from "../../components/common/Pagination/Pagination";
 import Input from "../../components/common/Input/Input";
-import { fetchFunction, hasOnlyAllowedParams, validateFilters, handleKeyDown } from "../../utils/function";
+import { fetchFunction, validateFilters, handleKeyDown } from "../../utils/function";
 import Modal from "../../components/common/Modal/Modal";
 import { Transition } from 'react-transition-group';
 import { useNotification } from "../../hooks/useNotification";
@@ -15,7 +15,7 @@ import { Context } from "../../main";
 import SkeletonPage from "../../components/common/Skeleton/SkeletonPage";
 import FormItem from "../../components/common/FormItem/FormItem";
 import Dropdown from "../../components/common/Dropdown/Dropdown";
-import classNames from "classnames";
+import CadasterFilterDropdown from "../../components/common/Dropdown/CadasterFilterDropdown";
 
 // Іконки
 const uploadIcon = generateIcon(iconMap.upload, null, 'currentColor', 20, 20);
@@ -23,8 +23,6 @@ const addIcon = generateIcon(iconMap.plus, null, 'currentColor', 20, 20);
 const editIcon = generateIcon(iconMap.edit, null, 'currentColor', 20, 20);
 const deleteIcon = generateIcon(iconMap.delete, null, 'currentColor', 20, 20);
 const searchIcon = generateIcon(iconMap.search, 'input-icon', 'currentColor', 16, 16);
-const saveIcon = generateIcon(iconMap.save, null, 'currentColor', 20, 20);
-const backIcon = generateIcon(iconMap.back, null, 'currentColor', 20, 20);
 const viewIcon = generateIcon(iconMap.view, null, 'currentColor', 20, 20);
 const filterIcon = generateIcon(iconMap.filter, null, 'currentColor', 20, 20);
 const dropDownIcon = generateIcon(iconMap.arrowDown, null, 'currentColor', 20, 20);
@@ -62,7 +60,13 @@ const CadasterList = () => {
             sort_by: null,
             sort_direction: null,
         },
-        selectData: {},
+        selectData: {
+            payer_name: '',
+            payer_address: '',
+            tax_address: '',
+            cadastral_number: '',
+            iban: ''
+        },
         
         // Модальні вікна
         isDeleteModalOpen: false,
@@ -144,12 +148,12 @@ const CadasterList = () => {
         try {
             return stateCadaster.sendData.sort_direction === 'desc' ? sortDownIcon : sortUpIcon;
         } catch (error) {
-            console.error('Помилка при створенні іконки сортування:', error);
+            console.error('Error generating sort icon:', error);
             return null;
         }
     }, [stateCadaster.sendData.sort_by, stateCadaster.sendData.sort_direction]);
 
-    // ===== МЕНЮ DROPDOWN =====
+    // Кнопка записів (як у debtor)
     const itemMenu = [
         {
             label: '16',
@@ -199,41 +203,23 @@ const CadasterList = () => {
                 }
             },
         },
-    ];
+    ]
 
-    // ===== ПОШУК ТА ПАГІНАЦІЯ =====
-    const onHandleChange = (name, value) => {
-        console.log('Filter change:', name, value);
-        setStateCadaster(prevState => ({
-            ...prevState,
-            selectData: {
-                ...prevState.selectData,
-                [name]: value
-            }
-        }))
-    }
-
-    const onPageChange = useCallback((page) => {
-        if (stateCadaster.sendData.page !== page) {
-            setStateCadaster(prevState => ({
-                ...prevState,
-                sendData: {
-                    ...prevState.sendData,
-                    page,
-                }
-            }));
-        }
-    }, [stateCadaster.sendData.page]);
-
-    // ===== ФІЛЬТРИ =====
     const filterHandleClick = () => {
-        console.log('Filter button clicked');
         setStateCadaster(prevState => ({
             ...prevState,
             isFilterOpen: !prevState.isFilterOpen,
         }))
     }
 
+    const closeFilterDropdown = () => {
+        setStateCadaster(prevState => ({
+            ...prevState,
+            isFilterOpen: false,
+        }))
+    }
+
+    // Перевіряємо чи є активні фільтри
     const hasActiveFilters = useMemo(() => {
         return Object.values(stateCadaster.selectData).some(value => {
             if (Array.isArray(value) && !value.length) {
@@ -243,43 +229,160 @@ const CadasterList = () => {
         })
     }, [stateCadaster.selectData])
 
-    const applyFilter = () => {
-        console.log('Apply filter:', stateCadaster.selectData);
-        const isAnyInputFilled = Object.values(stateCadaster.selectData).some(value => {
-            if (Array.isArray(value) && !value.length) {
-                return false
-            }
-            return value
-        })
-        if (isAnyInputFilled) {
-            setStateCadaster(prevState => ({
-                ...prevState,
-                sendData: {
-                    ...stateCadaster.selectData,
-                    limit: prevState.sendData.limit,
-                    page: 1,
-                    sort_by: prevState.sendData.sort_by,
-                    sort_direction: prevState.sendData.sort_direction,
-                }
-            }))
-        }
-    }
-
-    const resetFilters = () => {
-        console.log('Reset filters');
+    const onHandleChange = (name, value) => {
         setStateCadaster(prevState => ({
             ...prevState,
-            selectData: {},
-            sendData: {
-                limit: prevState.sendData.limit,
-                page: 1,
-                sort_by: prevState.sendData.sort_by,
-                sort_direction: prevState.sendData.sort_direction,
+            selectData: {
+                ...prevState.selectData,
+                [name]: value
             }
         }))
     }
 
-    // ===== ВАЛІДАЦІЯ ФОРМИ =====
+    const resetFilters = () => {
+        if (Object.values(stateCadaster.selectData).some(value => value)) {
+            setStateCadaster(prevState => ({
+                ...prevState,
+                selectData: {
+                    payer_name: '',
+                    payer_address: '',
+                    tax_address: '',
+                    cadastral_number: '',
+                    iban: ''
+                },
+                sendData: {
+                    ...prevState.sendData,
+                    page: 1
+                }
+            }));
+        }
+    }
+
+    const applyFilter = () => {
+        if (Object.values(stateCadaster.selectData).some(value => value)) {
+            const dataValidation = validateFilters(stateCadaster.selectData);
+            if (!dataValidation.error) {
+                setStateCadaster(prevState => ({
+                    ...prevState,
+                    sendData: {
+                        ...dataValidation,
+                        limit: prevState.sendData.limit,
+                        page: 1,
+                        sort_by: prevState.sendData.sort_by,
+                        sort_direction: prevState.sendData.sort_direction
+                    },
+                    isFilterOpen: false
+                }));
+            } else {
+                notification({
+                    type: 'warning',
+                    title: 'Помилка фільтрації',
+                    message: dataValidation.message,
+                    placement: 'top',
+                });
+            }
+        }
+    }
+
+    // Пагінація
+    const onPageChange = useCallback((newPage) => {
+        setStateCadaster(prevState => ({
+            ...prevState,
+            sendData: {
+                ...prevState.sendData,
+                page: newPage,
+            }
+        }));
+    }, []);
+
+    // Функції для модальних вікон
+    const closeModals = useCallback(() => {
+        setStateCadaster(prevState => ({
+            ...prevState,
+            isDeleteModalOpen: false,
+            isUploadModalOpen: false,
+            isCreateModalOpen: false,
+            isEditModalOpen: false,
+            isViewModalOpen: false,
+            isFilterOpen: false,
+            deletedItemId: null,
+            selectedFile: null,
+            editingItem: null,
+            viewingItem: null,
+            formData: {
+                payer_name: '',
+                payer_address: '',
+                iban: '',
+                plot_area: '',
+                land_tax: '',
+                tax_address: '',
+                cadastral_number: ''
+            },
+            formErrors: {}
+        }));
+        document.body.style.overflow = 'auto';
+    }, []);
+
+    // CRUD операції
+    const handleViewClick = useCallback((record) => {
+        setStateCadaster(prevState => ({
+            ...prevState,
+            isViewModalOpen: true,
+            viewingItem: record
+        }));
+        document.body.style.overflow = 'hidden';
+    }, []);
+
+    const handleEditClick = useCallback((id) => {
+        const item = data?.items?.find(item => item.id === id);
+        if (item) {
+            setStateCadaster(prevState => ({
+                ...prevState,
+                isEditModalOpen: true,
+                editingItem: item,
+                formData: {
+                    payer_name: item.payer_name || '',
+                    payer_address: item.payer_address || '',
+                    iban: item.iban || '',
+                    plot_area: item.plot_area || '',
+                    land_tax: item.land_tax || '',
+                    tax_address: item.tax_address || '',
+                    cadastral_number: item.cadastral_number || ''
+                },
+                formErrors: {}
+            }));
+            document.body.style.overflow = 'hidden';
+        }
+    }, [data?.items]);
+
+    const handleDeleteClick = useCallback((id) => {
+        setStateCadaster(prevState => ({
+            ...prevState,
+            isDeleteModalOpen: true,
+            deletedItemId: id
+        }));
+        document.body.style.overflow = 'hidden';
+    }, []);
+
+    const handleCreateClick = useCallback(() => {
+        setStateCadaster(prevState => ({
+            ...prevState,
+            isCreateModalOpen: true,
+            formData: {
+                payer_name: '',
+                payer_address: '',
+                iban: '',
+                plot_area: '',
+                land_tax: '',
+                tax_address: '',
+                cadastral_number: ''
+            },
+            formErrors: {}
+        }));
+        document.body.style.overflow = 'hidden';
+    }, []);
+
+    // Валідація форми
     const validateForm = useCallback((formData) => {
         const newErrors = {};
 
@@ -291,9 +394,7 @@ const CadasterList = () => {
             newErrors.payer_address = 'Адреса платника є обов\'язковою';
         }
 
-        if (!formData.iban.trim()) {
-            newErrors.iban = 'IBAN є обов\'язковим';
-        } else if (!/^UA\d{27}$/.test(formData.iban)) {
+        if (formData.iban && !/^UA\d{27}$/.test(formData.iban.replace(/\s/g, ''))) {
             newErrors.iban = 'IBAN має бути у форматі UA + 27 цифр';
         }
 
@@ -330,27 +431,7 @@ const CadasterList = () => {
         }));
     }, []);
 
-    // ===== СТВОРЕННЯ ЗАПИСУ =====
-    const handleCreateClick = useCallback(() => {
-        console.log('Create button clicked');
-        setStateCadaster(prevState => ({
-            ...prevState,
-            isCreateModalOpen: true,
-            formData: {
-                payer_name: '',
-                payer_address: '',
-                iban: '',
-                plot_area: '',
-                land_tax: '',
-                tax_address: '',
-                cadastral_number: ''
-            },
-            formErrors: {}
-        }));
-    }, []);
-
     const handleCreateSave = useCallback(async () => {
-        console.log('Create save clicked');
         const errors = validateForm(stateCadaster.formData);
         
         if (Object.keys(errors).length > 0) {
@@ -372,83 +453,32 @@ const CadasterList = () => {
         try {
             const response = await fetchFunction('api/cadaster', {
                 method: 'POST',
-                data: {
-                    ...stateCadaster.formData,
-                    plot_area: parseFloat(stateCadaster.formData.plot_area),
-                    land_tax: parseFloat(stateCadaster.formData.land_tax)
-                }
+                data: stateCadaster.formData
             });
 
-            if (response && !response.error) {
+            if (response) {
                 notification({
                     type: "success",
                     title: "Успіх",
-                    message: response.message || "Кадастровий запис успішно створено",
+                    message: "Запис успішно створено",
                     placement: "top"
                 });
-                
+                closeModals();
                 retryFetch();
-                setStateCadaster(prevState => ({
-                    ...prevState,
-                    isCreateModalOpen: false,
-                    formData: {
-                        payer_name: '',
-                        payer_address: '',
-                        iban: '',
-                        plot_area: '',
-                        land_tax: '',
-                        tax_address: '',
-                        cadastral_number: ''
-                    },
-                    formErrors: {}
-                }));
             }
         } catch (error) {
             notification({
                 type: "error",
                 title: "Помилка",
-                message: error.message || "Помилка при створенні",
+                message: error?.response?.data?.message || error.message || "Помилка створення запису",
                 placement: "top"
             });
         } finally {
             setStateCadaster(prevState => ({ ...prevState, createLoading: false }));
         }
-    }, [stateCadaster.formData, validateForm, notification, retryFetch]);
-
-    // ===== РЕДАГУВАННЯ ЗАПИСУ =====
-    const handleEditClick = useCallback(async (id) => {
-        console.log('Edit button clicked for id:', id);
-        try {
-            const response = await fetchFunction(`api/cadaster/${id}`);
-            if (response && !response.error) {
-                setStateCadaster(prevState => ({
-                    ...prevState,
-                    isEditModalOpen: true,
-                    editingItem: response,
-                    formData: {
-                        payer_name: response.payer_name || '',
-                        payer_address: response.payer_address || '',
-                        iban: response.iban || '',
-                        plot_area: response.plot_area || '',
-                        land_tax: response.land_tax || '',
-                        tax_address: response.tax_address || '',
-                        cadastral_number: response.cadastral_number || ''
-                    },
-                    formErrors: {}
-                }));
-            }
-        } catch (error) {
-            notification({
-                type: "error",
-                title: "Помилка",
-                message: "Помилка при завантаженні даних",
-                placement: "top"
-            });
-        }
-    }, [notification]);
+    }, [stateCadaster.formData, validateForm, notification, closeModals, retryFetch]);
 
     const handleEditSave = useCallback(async () => {
-        console.log('Edit save clicked');
         const errors = validateForm(stateCadaster.formData);
         
         if (Object.keys(errors).length > 0) {
@@ -470,108 +500,74 @@ const CadasterList = () => {
         try {
             const response = await fetchFunction(`api/cadaster/${stateCadaster.editingItem.id}`, {
                 method: 'PUT',
-                data: {
-                    ...stateCadaster.formData,
-                    plot_area: parseFloat(stateCadaster.formData.plot_area),
-                    land_tax: parseFloat(stateCadaster.formData.land_tax)
-                }
+                data: stateCadaster.formData
             });
 
-            if (response && !response.error) {
+            if (response) {
                 notification({
                     type: "success",
                     title: "Успіх",
-                    message: response.message || "Кадастровий запис успішно оновлено",
+                    message: "Запис успішно оновлено",
                     placement: "top"
                 });
-                
+                closeModals();
                 retryFetch();
-                setStateCadaster(prevState => ({
-                    ...prevState,
-                    isEditModalOpen: false,
-                    editingItem: null,
-                    formErrors: {}
-                }));
             }
         } catch (error) {
             notification({
                 type: "error",
                 title: "Помилка",
-                message: error.message || "Помилка при збереженні",
+                message: error?.response?.data?.message || error.message || "Помилка оновлення запису",
                 placement: "top"
             });
         } finally {
             setStateCadaster(prevState => ({ ...prevState, editLoading: false }));
         }
-    }, [stateCadaster.formData, stateCadaster.editingItem, validateForm, notification, retryFetch]);
+    }, [stateCadaster.formData, stateCadaster.editingItem, validateForm, notification, closeModals, retryFetch]);
 
-    // ===== ПЕРЕГЛЯД ЗАПИСУ (ВИПРАВЛЕНО) =====
-    const handleViewClick = useCallback((record) => {
-        console.log('View button clicked for record:', record);
-        setStateCadaster(prevState => ({
-            ...prevState,
-            isViewModalOpen: true,
-            viewingItem: record
-        }));
-    }, []);
+    const handleConfirmDelete = useCallback(async () => {
+        if (stateCadaster.deletedItemId) {
+            setStateCadaster(prevState => ({ ...prevState, confirmLoading: true }));
 
-    // ===== ВИДАЛЕННЯ ЗАПИСУ =====
-    const handleDeleteClick = useCallback((id) => {
-        console.log('Delete button clicked for id:', id);
-        setStateCadaster(prevState => ({
-            ...prevState,
-            isDeleteModalOpen: true,
-            deletedItemId: id,
-        }));
-    }, []);
-
-    const confirmDelete = useCallback(async () => {
-        console.log('Confirm delete for id:', stateCadaster.deletedItemId);
-        setStateCadaster(prevState => ({ ...prevState, confirmLoading: true }));
-        
-        try {
-            const response = await fetchFunction(`api/cadaster/${stateCadaster.deletedItemId}`, {
-                method: 'DELETE',
-            });
-            
-            if (response && !response.error) {
-                notification({
-                    type: "success",
-                    title: "Успіх",
-                    message: response.message || "Запис успішно видалено",
-                    placement: "top"
+            try {
+                await fetchFunction(`api/cadaster/${stateCadaster.deletedItemId}`, {
+                    method: 'DELETE'
                 });
-                retryFetch();
-            }
-        } catch (error) {
-            notification({
-                type: "error",
-                title: "Помилка",
-                message: error.message || "Помилка при видаленні",
-                placement: "top"
-            });
-        } finally {
-            setStateCadaster(prevState => ({
-                ...prevState,
-                isDeleteModalOpen: false,
-                confirmLoading: false,
-                deletedItemId: null,
-            }));
-        }
-    }, [stateCadaster.deletedItemId, notification, retryFetch]);
 
-    // ===== ЗАВАНТАЖЕННЯ EXCEL =====
-    const handleFileUploadClick = useCallback(() => {
-        console.log('Upload button clicked');
+                notification({
+                    type: 'success',
+                    title: 'Успіх',
+                    message: 'Запис успішно видалено',
+                    placement: 'top',
+                });
+
+                closeModals();
+                retryFetch();
+            } catch (error) {
+                notification({
+                    type: 'error',
+                    title: 'Помилка',
+                    message: error?.response?.data?.message || error.message || 'Помилка видалення запису',
+                    placement: 'top',
+                });
+            } finally {
+                setStateCadaster(prevState => ({ ...prevState, confirmLoading: false }));
+            }
+        }
+    }, [stateCadaster.deletedItemId, notification, closeModals, retryFetch]);
+
+    // Завантаження файлів
+    const handleUploadClick = useCallback(() => {
         setStateCadaster(prevState => ({
             ...prevState,
             isUploadModalOpen: true,
+            selectedFile: null,
         }));
+        document.body.style.overflow = 'hidden';
     }, []);
 
-    const handleFileSelect = useCallback((event) => {
+    const handleFileInputChange = useCallback((event) => {
         const file = event.target.files?.[0];
-        console.log('File selected:', file);
         
         if (file) {
             const fileName = file.name.toLowerCase();
@@ -594,49 +590,7 @@ const CadasterList = () => {
         }
     }, [notification]);
 
-    const handleDragOver = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, []);
-
-    const handleDragLeave = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, []);
-
-    const handleDrop = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            const file = files[0];
-            const fileName = file.name.toLowerCase();
-            const isValidFormat = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
-            
-            if (!isValidFormat) {
-                notification({
-                    type: 'warning',
-                    placement: 'top',
-                    title: 'Помилка',
-                    message: 'Файл має бути у форматі Excel (.xls або .xlsx)!'
-                });
-                return;
-            }
-            
-            setStateCadaster(prevState => ({
-                ...prevState,
-                selectedFile: file,
-            }));
-        }
-    }, [notification]);
-
-    const handleDivClick = useCallback(() => {
-        fileInputRef.current?.click();
-    }, []);
-
     const handleUploadFile = useCallback(async () => {
-        console.log('Upload file:', stateCadaster.selectedFile);
         if (!stateCadaster.selectedFile) {
             notification({
                 type: 'warning',
@@ -647,75 +601,62 @@ const CadasterList = () => {
             return;
         }
 
+        const formData = new FormData();
+        formData.append('file', stateCadaster.selectedFile);
+
         setStateCadaster(prevState => ({ ...prevState, uploadLoading: true }));
 
         try {
-            const formData = new FormData();
-            formData.append('file', stateCadaster.selectedFile);
-
             const response = await fetchFunction('api/cadaster/upload', {
                 method: 'POST',
-                data: formData,
+                body: formData,
             });
 
-            if (response && response.success) {
+            if (response?.success) {
                 notification({
-                    type: "success",
-                    title: "Успіх",
-                    message: response.message || "Файл успішно завантажено",
-                    placement: "top"
+                    type: 'success',
+                    placement: 'top',
+                    title: 'Успіх',
+                    message: response.message || 'Файл успішно завантажено!'
                 });
                 
+                closeModals();
                 retryFetch();
-                setStateCadaster(prevState => ({
-                    ...prevState,
-                    isUploadModalOpen: false,
-                    selectedFile: null,
-                }));
+            } else {
+                throw new Error(response?.message || 'Помилка завантаження файлу');
             }
         } catch (error) {
             notification({
-                type: "error",
-                title: "Помилка",
-                message: error.message || "Помилка при завантаженні файлу",
-                placement: "top"
+                type: 'error',
+                placement: 'top',
+                title: 'Помилка',
+                message: error?.response?.data?.message || error.message || 'Помилка завантаження файлу'
             });
         } finally {
             setStateCadaster(prevState => ({ ...prevState, uploadLoading: false }));
         }
-    }, [stateCadaster.selectedFile, notification, retryFetch]);
+    }, [stateCadaster.selectedFile, notification, closeModals, retryFetch]);
 
-    // ===== ЗАКРИТТЯ МОДАЛЬНИХ ВІКОН =====
-    const closeModals = useCallback(() => {
-        console.log('Close modals');
-        setStateCadaster(prevState => ({
-            ...prevState,
-            isDeleteModalOpen: false,
-            isUploadModalOpen: false,
-            isCreateModalOpen: false,
-            isEditModalOpen: false,
-            isViewModalOpen: false,
-            deletedItemId: null,
-            selectedFile: null,
-            editingItem: null,
-            viewingItem: null,
-            formErrors: {}
-        }));
-    }, []);
-
-    // ===== КОЛОНКИ ТАБЛИЦІ З СОРТУВАННЯМ (БЕЗ ДАТИ СТВОРЕННЯ) =====
-    const columns = useMemo(() => {
-        const createSortableColumn = (title, dataIndex, render = null, width = null) => ({
-            title,
+    // Колонки таблиці
+    const createSortableColumn = useCallback((title, dataIndex, render = null, width = null) => {
+        const sortIcon = getSortIcon(dataIndex);
+        return {
+            title: (
+                <div className="sortable-header" onClick={() => handleSort(dataIndex)}>
+                    <span>{title}</span>
+                    {sortIcon}
+                </div>
+            ),
             dataIndex,
-            sortable: true,
-            onHeaderClick: () => handleSort(dataIndex),
-            sortIcon: getSortIcon(dataIndex),
             headerClassName: stateCadaster.sendData.sort_by === dataIndex ? 
                 'sortable-header active' : 'sortable-header',
             width,
             render
-        });
+        };
+    }, [handleSort, getSortIcon, stateCadaster.sendData.sort_by]);
+
+    const columnTable = useMemo(() => {
+        const startRecord = ((stateCadaster.sendData.page || 1) - 1) * stateCadaster.sendData.limit + 1;
 
         return [
             {
@@ -731,8 +672,12 @@ const CadasterList = () => {
             createSortableColumn('Площа діляки (га)', 'plot_area', (value) => value ? `${parseFloat(value).toFixed(2)} га` : '-', '120px'),
             createSortableColumn('Земельний податок (грн)', 'land_tax', (value) => value ? `${parseFloat(value).toFixed(2)} грн` : '-', '140px'),
             createSortableColumn('Податкова адреса', 'tax_address', null, '180px'),
-            createSortableColumn('Кадастровий номер', 'cadastral_number', null, '160px'),
-            // ВИДАЛЕНО: createSortableColumn('Дата створення', 'created_at', ...)
+            createSortableColumn('Кадастровий номер', 'cadastral_number', (value) => {
+                if (!value || value.startsWith('AUTO_')) {
+                    return 'Інформація не надана';
+                }
+                return value;
+            }, '160px'),
             {
                 title: 'Дія',
                 key: 'action',
@@ -743,7 +688,7 @@ const CadasterList = () => {
                         <Button
                             title="Переглянути"
                             icon={viewIcon}
-                            onClick={() => handleViewClick(record)} // ВИПРАВЛЕНО: передаємо record
+                            onClick={() => handleViewClick(record)}
                         />
                         <Button
                             title="Редагувати"
@@ -760,109 +705,15 @@ const CadasterList = () => {
                 ),
             },
         ];
-    }, [startRecord, handleViewClick, handleEditClick, handleDeleteClick, handleSort, getSortIcon, stateCadaster.sendData.sort_by]);
+    }, [startRecord, handleViewClick, handleEditClick, handleDeleteClick, createSortableColumn]);
 
-    // ===== РЕНДЕР ФОРМИ =====
-    const renderForm = (formData, formErrors, handleInputChange) => (
-        <div className="form-grid">
-            <FormItem 
-                label="ПІБ Платника" 
-                required 
-                error={formErrors.payer_name}
-            >
-                <Input
-                    value={formData.payer_name}
-                    onChange={(_, value) => handleInputChange('payer_name', value)}
-                    placeholder="Введіть ПІБ платника"
-                    onKeyDown={handleKeyDown}
-                />
-            </FormItem>
-
-            <FormItem 
-                label="Адреса платника" 
-                required 
-                error={formErrors.payer_address}
-            >
-                <Input
-                    value={formData.payer_address}
-                    onChange={(_, value) => handleInputChange('payer_address', value)}
-                    placeholder="Введіть адресу платника"
-                    onKeyDown={handleKeyDown}
-                />
-            </FormItem>
-
-            <FormItem 
-                label="IBAN" 
-                required 
-                error={formErrors.iban}
-            >
-                <Input
-                    value={formData.iban}
-                    onChange={(_, value) => handleInputChange('iban', value)}
-                    placeholder="UA123456789012345678901234567"
-                    onKeyDown={handleKeyDown}
-                />
-            </FormItem>
-
-            <FormItem 
-                label="Площа діляки (га)" 
-                required 
-                error={formErrors.plot_area}
-            >
-                <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.plot_area}
-                    onChange={(_, value) => handleInputChange('plot_area', value)}
-                    placeholder="Введіть площу в гектарах"
-                    onKeyDown={handleKeyDown}
-                />
-            </FormItem>
-
-            <FormItem 
-                label="Земельний податок (грн)" 
-                required 
-                error={formErrors.land_tax}
-            >
-                <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.land_tax}
-                    onChange={(_, value) => handleInputChange('land_tax', value)}
-                    placeholder="Введіть суму податку в гривнях"
-                    onKeyDown={handleKeyDown}
-                />
-            </FormItem>
-
-            <FormItem 
-                label="Податкова адреса платника" 
-                required 
-                error={formErrors.tax_address}
-            >
-                <Input
-                    value={formData.tax_address}
-                    onChange={(_, value) => handleInputChange('tax_address', value)}
-                    placeholder="Введіть податкову адресу"
-                    onKeyDown={handleKeyDown}
-                />
-            </FormItem>
-
-            <FormItem 
-                label="Кадастровий номер" 
-                required 
-                error={formErrors.cadastral_number}
-            >
-                <Input
-                    value={formData.cadastral_number}
-                    onChange={(_, value) => handleInputChange('cadastral_number', value)}
-                    placeholder="Введіть кадастровий номер"
-                    onKeyDown={handleKeyDown}
-                />
-            </FormItem>
-        </div>
-    );
+    // Рендер таблиці даних
+    const tableData = useMemo(() => {
+        return data?.items?.map((item, index) => ({
+            ...item,
+            key: item.id || index,
+        })) || [];
+    }, [data?.items]);
 
     if (status === STATUS.ERROR) {
         return <PageError onRetry={retryFetch} />;
@@ -885,19 +736,22 @@ const CadasterList = () => {
                                 )}
                             </h2>
                             <div className="table-header__buttons">
-                                <Button
+                                <Button 
+                                    className="btn--primary"
+                                    onClick={handleCreateClick}
+                                    icon={addIcon}
+                                >
+                                    Створити
+                                </Button>
+                                
+                                <Button 
+                                    className="btn--primary"
+                                    onClick={handleUploadClick}
                                     icon={uploadIcon}
-                                    onClick={handleFileUploadClick}
                                 >
                                     Завантажити Excel
                                 </Button>
-                                <Button
-                                    type="primary"
-                                    icon={addIcon}
-                                    onClick={handleCreateClick}
-                                >
-                                    Додати запис
-                                </Button>
+                                
                                 <Dropdown
                                     icon={dropDownIcon}
                                     iconPosition="right"
@@ -906,125 +760,44 @@ const CadasterList = () => {
                                     caption={`Записів: ${stateCadaster.sendData.limit}`}
                                     menu={itemMenu}
                                 />
+                                
                                 <Button
                                     className={`table-filter-trigger ${hasActiveFilters ? 'has-active-filters' : ''}`}
                                     onClick={filterHandleClick}
-                                    icon={filterIcon}
-                                >
+                                    icon={filterIcon}>
                                     Фільтри {hasActiveFilters && `(${Object.keys(stateCadaster.selectData).filter(key => stateCadaster.selectData[key]).length})`}
                                 </Button>
+                                
+                                <CadasterFilterDropdown
+                                    isOpen={stateCadaster.isFilterOpen}
+                                    onClose={closeFilterDropdown}
+                                    filterData={stateCadaster.selectData}
+                                    onFilterChange={onHandleChange}
+                                    onApplyFilter={applyFilter}
+                                    onResetFilters={resetFilters}
+                                    searchIcon={searchIcon}
+                                />
                             </div>
                         </div>
                         <div className="table-main">
-                            <div style={{ width: `${data?.items?.length > 0 ? 'auto' : '100%'}` }}
-                                 className={classNames("table-and-pagination-wrapper", { "table-and-pagination-wrapper--active": stateCadaster.isFilterOpen })}>
-                                <Table columns={columns} dataSource={data?.items || []} />
-                                {data?.totalItems > 0 && (
-                                    <Pagination
-                                        className="m-b"
-                                        currentPage={stateCadaster.sendData.page}
-                                        totalCount={data.totalItems}
-                                        pageSize={stateCadaster.sendData.limit}
-                                        onPageChange={onPageChange}
-                                    />
-                                )}
-                            </div>
-                            
-                            {/* РОЗШИРЕНІ ФІЛЬТРИ (ЯК У DEBTOR) */}
-                            <div className={`table-filter ${stateCadaster.isFilterOpen ? "table-filter--active" : ""}`}>
-                                <h3 className="title title--sm">
-                                    Фільтри
-                                </h3>
-                                <div className="btn-group">
-                                    <Button onClick={applyFilter}>
-                                        Застосувати
-                                    </Button>
-                                    <Button className="btn--secondary" onClick={resetFilters}>
-                                        Скинути
-                                    </Button>
+                            <div className="table-and-pagination-wrapper">
+                                <div className="table-wrapper" style={{
+                                    overflowX: 'auto',
+                                    minWidth: data?.items?.length > 0 ? '1200px' : 'auto'
+                                }}>
+                                    <Table columns={columnTable} dataSource={tableData}/>
                                 </div>
-                                
-                                <div className="table-filter__item">
-                                    <Input
-                                        icon={searchIcon}
-                                        name="payer_name"
-                                        type="text"
-                                        placeholder="ПІБ платника"
-                                        value={stateCadaster.selectData?.payer_name || ''}
-                                        onChange={(name, value) => onHandleChange(name, value)}
-                                    />
-                                </div>
-                                
-                                <div className="table-filter__item">
-                                    <Input
-                                        icon={searchIcon}
-                                        name="cadastral_number"
-                                        type="text"
-                                        placeholder="Кадастровий номер"
-                                        value={stateCadaster.selectData?.cadastral_number || ''}
-                                        onChange={(name, value) => onHandleChange(name, value)}
-                                    />
-                                </div>
-                                
-                                <div className="table-filter__item">
-                                    <Input
-                                        icon={searchIcon}
-                                        name="payer_address"
-                                        type="text"
-                                        placeholder="Адреса платника"
-                                        value={stateCadaster.selectData?.payer_address || ''}
-                                        onChange={(name, value) => onHandleChange(name, value)}
-                                    />
-                                </div>
-                                
-                                <div className="table-filter__item">
-                                    <Input
-                                        icon={searchIcon}
-                                        name="iban"
-                                        type="text"
-                                        placeholder="IBAN"
-                                        value={stateCadaster.selectData?.iban || ''}
-                                        onChange={(name, value) => onHandleChange(name, value)}
-                                    />
-                                </div>
-
-                                <div className="table-filter__item">
-                                    <Input
-                                        icon={searchIcon}
-                                        name="tax_address"
-                                        type="text"
-                                        placeholder="Податкова адреса"
-                                        value={stateCadaster.selectData?.tax_address || ''}
-                                        onChange={(name, value) => onHandleChange(name, value)}
-                                    />
-                                </div>
+                                <Pagination
+                                    className="m-b"
+                                    currentPage={parseInt(data?.currentPage) || 1}
+                                    totalCount={data?.totalItems || 1}
+                                    pageSize={stateCadaster.sendData.limit}
+                                    onPageChange={onPageChange}/>
                             </div>
                         </div>
                     </div>
                 </React.Fragment>
             ) : null}
-
-            {/* ===== МОДАЛЬНІ ВІКНА ===== */}
-
-            {/* Модальне вікно видалення */}
-            <Transition in={stateCadaster.isDeleteModalOpen} timeout={200} nodeRef={nodeRef}>
-                {(transitionState) => (
-                    <Modal
-                        ref={nodeRef}
-                        className={`${transitionState === 'entered' ? "modal-window-wrapper--active" : ""}`}
-                        onClose={closeModals}
-                        onOk={confirmDelete}
-                        confirmLoading={stateCadaster.confirmLoading}
-                        cancelText="Скасувати"
-                        okText="Так, видалити"
-                        title="Підтвердження видалення"
-                    >
-                        <p className="paragraph">
-                            Ви впевнені, що хочете видалити цей кадастровий запис?
-                        </p>
-                    </Modal>
-                )}
-            </Transition>
 
             {/* Модальне вікно завантаження Excel */}
             <Transition in={stateCadaster.isUploadModalOpen} timeout={200} nodeRef={uploadNodeRef}>
@@ -1045,78 +818,46 @@ const CadasterList = () => {
                                 Оберіть Excel файл (.xlsx або .xls) з кадастровими записами для завантаження.
                             </p>
                             
-                            <div style={{ marginBottom: '16px' }}>
-                                <strong>Структура файлу повинна містити колонки:</strong>
-                                <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
-                                    <li>ПІБ Платника</li>
-                                    <li>Адреса платника</li>
-                                    <li>IBAN</li>
-                                    <li>Площа діляки</li>
-                                    <li>Земельний податок</li>
-                                    <li>Податкова адреса</li>
-                                    <li>Кадастровий номер</li>
-                                </ul>
-                            </div>
-                            
                             <div 
+                                className="file-upload-area"
+                                onClick={() => fileInputRef.current?.click()}
                                 style={{
-                                    position: 'relative',
-                                    marginBottom: '16px'
-                                }}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleDrop}
-                                onClick={handleDivClick}
-                            >
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                                    onChange={handleFileSelect}
-                                    style={{
-                                        position: 'absolute',
-                                        opacity: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        cursor: 'pointer',
-                                        zIndex: 1
-                                    }}
-                                />
-                                <div style={{
-                                    width: '100%',
+                                    border: '2px dashed #d9d9d9',
+                                    borderRadius: '6px',
                                     padding: '20px',
-                                    border: '2px dashed #007bff',
-                                    borderRadius: '8px',
-                                    backgroundColor: stateCadaster.selectedFile ? '#e8f4f8' : '#f8f9fa',
                                     textAlign: 'center',
                                     cursor: 'pointer',
-                                    transition: 'all 0.3s ease',
-                                    minHeight: '80px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'center',
-                                    alignItems: 'center'
-                                }}>
-                                    <div style={{
-                                        fontSize: '24px',
-                                        marginBottom: '8px',
-                                        color: '#007bff'
-                                    }}>
-                                        📁
+                                    backgroundColor: '#fafafa'
+                                }}
+                            >
+                                {stateCadaster.selectedFile ? (
+                                    <div>
+                                        <p style={{ color: '#52c41a', marginBottom: '8px' }}>
+                                            ✓ Файл обрано: {stateCadaster.selectedFile.name}
+                                        </p>
+                                        <p style={{ color: '#666', fontSize: '14px' }}>
+                                            Клікніть для вибору іншого файлу
+                                        </p>
                                     </div>
-                                    <p style={{
-                                        margin: 0,
-                                        fontSize: '14px',
-                                        color: '#495057',
-                                        fontWeight: '500'
-                                    }}>
-                                        {stateCadaster.selectedFile 
-                                            ? `Обрано файл: ${stateCadaster.selectedFile.name}` 
-                                            : 'Перетягніть файл сюди або натисніть для вибору'
-                                        }
-                                    </p>
-                                </div>
+                                ) : (
+                                    <div>
+                                        <p style={{ marginBottom: '8px' }}>
+                                            {uploadIcon} Клікніть для вибору файлу
+                                        </p>
+                                        <p style={{ color: '#666', fontSize: '14px' }}>
+                                            Підтримуються формати: .xlsx, .xls
+                                        </p>
+                                    </div>
+                                )}
                             </div>
+                            
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".xlsx,.xls"
+                                onChange={handleFileInputChange}
+                                style={{ display: 'none' }}
+                            />
                         </div>
                     </Modal>
                 )}
@@ -1133,10 +874,105 @@ const CadasterList = () => {
                         confirmLoading={stateCadaster.createLoading}
                         cancelText="Скасувати"
                         okText="Створити"
-                        title="Створення кадастрового запису"
-                        width="800px"
+                        title="Створення нового запису"
                     >
-                        {renderForm(stateCadaster.formData, stateCadaster.formErrors, handleInputChange)}
+                        <div className="form-grid">
+                            <FormItem 
+                                label="ПІБ Платника" 
+                                required 
+                                error={stateCadaster.formErrors.payer_name}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.payer_name}
+                                    onChange={(_, value) => handleInputChange('payer_name', value)}
+                                    placeholder="Введіть ПІБ платника"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Адреса платника" 
+                                required 
+                                error={stateCadaster.formErrors.payer_address}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.payer_address}
+                                    onChange={(_, value) => handleInputChange('payer_address', value)}
+                                    placeholder="Введіть адресу платника"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="IBAN" 
+                                error={stateCadaster.formErrors.iban}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.iban}
+                                    onChange={(_, value) => handleInputChange('iban', value)}
+                                    placeholder="UA + 27 цифр"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Площа діляки (га)" 
+                                required 
+                                error={stateCadaster.formErrors.plot_area}
+                            >
+                                <Input
+                                    type="number"
+                                    step="0.0001"
+                                    min="0"
+                                    value={stateCadaster.formData.plot_area}
+                                    onChange={(_, value) => handleInputChange('plot_area', value)}
+                                    placeholder="Введіть площу в гектарах"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Земельний податок (грн)" 
+                                required 
+                                error={stateCadaster.formErrors.land_tax}
+                            >
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={stateCadaster.formData.land_tax}
+                                    onChange={(_, value) => handleInputChange('land_tax', value)}
+                                    placeholder="Введіть суму податку в гривнях"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Податкова адреса платника" 
+                                required 
+                                error={stateCadaster.formErrors.tax_address}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.tax_address}
+                                    onChange={(_, value) => handleInputChange('tax_address', value)}
+                                    placeholder="Введіть податкову адресу"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Кадастровий номер" 
+                                required 
+                                error={stateCadaster.formErrors.cadastral_number}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.cadastral_number}
+                                    onChange={(_, value) => handleInputChange('cadastral_number', value)}
+                                    placeholder="Введіть кадастровий номер"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+                        </div>
                     </Modal>
                 )}
             </Transition>
@@ -1152,10 +988,124 @@ const CadasterList = () => {
                         confirmLoading={stateCadaster.editLoading}
                         cancelText="Скасувати"
                         okText="Зберегти"
-                        title="Редагування кадастрового запису"
-                        width="800px"
+                        title="Редагування запису"
                     >
-                        {renderForm(stateCadaster.formData, stateCadaster.formErrors, handleInputChange)}
+                        <div className="form-grid">
+                            <FormItem 
+                                label="ПІБ Платника" 
+                                required 
+                                error={stateCadaster.formErrors.payer_name}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.payer_name}
+                                    onChange={(_, value) => handleInputChange('payer_name', value)}
+                                    placeholder="Введіть ПІБ платника"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Адреса платника" 
+                                required 
+                                error={stateCadaster.formErrors.payer_address}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.payer_address}
+                                    onChange={(_, value) => handleInputChange('payer_address', value)}
+                                    placeholder="Введіть адресу платника"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="IBAN" 
+                                error={stateCadaster.formErrors.iban}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.iban}
+                                    onChange={(_, value) => handleInputChange('iban', value)}
+                                    placeholder="UA + 27 цифр"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Площа діляки (га)" 
+                                required 
+                                error={stateCadaster.formErrors.plot_area}
+                            >
+                                <Input
+                                    type="number"
+                                    step="0.0001"
+                                    min="0"
+                                    value={stateCadaster.formData.plot_area}
+                                    onChange={(_, value) => handleInputChange('plot_area', value)}
+                                    placeholder="Введіть площу в гектарах"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Земельний податок (грн)" 
+                                required 
+                                error={stateCadaster.formErrors.land_tax}
+                            >
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={stateCadaster.formData.land_tax}
+                                    onChange={(_, value) => handleInputChange('land_tax', value)}
+                                    placeholder="Введіть суму податку в гривнях"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Податкова адреса платника" 
+                                required 
+                                error={stateCadaster.formErrors.tax_address}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.tax_address}
+                                    onChange={(_, value) => handleInputChange('tax_address', value)}
+                                    placeholder="Введіть податкову адресу"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+
+                            <FormItem 
+                                label="Кадастровий номер" 
+                                required 
+                                error={stateCadaster.formErrors.cadastral_number}
+                            >
+                                <Input
+                                    value={stateCadaster.formData.cadastral_number}
+                                    onChange={(_, value) => handleInputChange('cadastral_number', value)}
+                                    placeholder="Введіть кадастровий номер"
+                                    onKeyDown={handleKeyDown}
+                                />
+                            </FormItem>
+                        </div>
+                    </Modal>
+                )}
+            </Transition>
+
+            {/* Модальне вікно видалення */}
+            <Transition in={!!stateCadaster.deletedItemId} timeout={200} unmountOnExit nodeRef={nodeRef}>
+                {state => (
+                    <Modal
+                        ref={nodeRef}
+                        className={`${state === 'entered' ? "modal-window-wrapper--active" : ""}`}
+                        onClose={closeModals}
+                        onOk={handleConfirmDelete}
+                        confirmLoading={stateCadaster.confirmLoading}
+                        cancelText="Скасувати"
+                        okText="Видалити"
+                        title="Видалення запису"
+                        danger
+                    >
+                        <p>Ви впевнені, що хочете видалити цей запис? Цю дію неможливо скасувати.</p>
                     </Modal>
                 )}
             </Transition>
@@ -1167,27 +1117,11 @@ const CadasterList = () => {
                         ref={viewNodeRef}
                         className={`${transitionState === 'entered' ? "modal-window-wrapper--active" : ""}`}
                         onClose={closeModals}
-                        cancelText="Закрити"
-                        title="Перегляд кадастрового запису"
-                        width="800px"
-                        footer={
-                            <div className="modal-actions">
-                                <Button onClick={closeModals}>Закрити</Button>
-                                <Button
-                                    type="primary"
-                                    icon={editIcon}
-                                    onClick={() => {
-                                        closeModals();
-                                        setTimeout(() => handleEditClick(stateCadaster.viewingItem.id), 100);
-                                    }}
-                                >
-                                    Редагувати
-                                </Button>
-                            </div>
-                        }
+                        title="Перегляд запису"
+                        footer={null}
                     >
                         {stateCadaster.viewingItem && (
-                            <div className="detail-grid">
+                            <div className="detail-view">
                                 <div className="detail-item">
                                     <label className="detail-label">ПІБ Платника:</label>
                                     <div className="detail-value">{stateCadaster.viewingItem.payer_name}</div>
@@ -1200,20 +1134,22 @@ const CadasterList = () => {
 
                                 <div className="detail-item">
                                     <label className="detail-label">IBAN:</label>
-                                    <div className="detail-value">{stateCadaster.viewingItem.iban}</div>
+                                    <div className="detail-value">{stateCadaster.viewingItem.iban || '-'}</div>
                                 </div>
 
                                 <div className="detail-item">
                                     <label className="detail-label">Площа діляки:</label>
                                     <div className="detail-value">
-                                        {stateCadaster.viewingItem.plot_area ? `${parseFloat(stateCadaster.viewingItem.plot_area).toFixed(4)} га` : '-'}
+                                        {stateCadaster.viewingItem.plot_area ? 
+                                            `${parseFloat(stateCadaster.viewingItem.plot_area).toFixed(4)} га` : '-'}
                                     </div>
                                 </div>
 
                                 <div className="detail-item">
                                     <label className="detail-label">Земельний податок:</label>
                                     <div className="detail-value">
-                                        {stateCadaster.viewingItem.land_tax ? `${parseFloat(stateCadaster.viewingItem.land_tax).toFixed(2)} грн` : '-'}
+                                        {stateCadaster.viewingItem.land_tax ? 
+                                            `${parseFloat(stateCadaster.viewingItem.land_tax).toFixed(2)} грн` : '-'}
                                     </div>
                                 </div>
 
@@ -1224,7 +1160,11 @@ const CadasterList = () => {
 
                                 <div className="detail-item">
                                     <label className="detail-label">Кадастровий номер:</label>
-                                    <div className="detail-value">{stateCadaster.viewingItem.cadastral_number}</div>
+                                    <div className="detail-value">
+                                        {!stateCadaster.viewingItem.cadastral_number || 
+                                         stateCadaster.viewingItem.cadastral_number.startsWith('AUTO_') ? 
+                                         'Інформація не надана' : stateCadaster.viewingItem.cadastral_number}
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -8,8 +8,8 @@ class CadasterRepository {
         const values = [];
         
         // Валідуємо параметри сортування
-        const safeSortField = getSafeCadasterSortField(sortBy);
-        const safeSortDirection = validateSortDirection(sortDirection);
+        const safeSortField = getSafeCadasterSortField ? getSafeCadasterSortField(sortBy) : 'id';
+        const safeSortDirection = validateSortDirection ? validateSortDirection(sortDirection) : 'desc';
         
         console.log('🔄 Repository sorting params:', { sortBy, sortDirection, safeSortField, safeSortDirection });
         
@@ -28,8 +28,8 @@ class CadasterRepository {
         }
 
         if (search) {
-            sql += ` AND (payer_name ILIKE ? OR cadastral_number ILIKE ? OR payer_address ILIKE ?)`;
-            values.push(`%${search}%`, `%${search}%`, `%${search}%`);
+            sql += ` AND (payer_name ILIKE ? OR cadastral_number ILIKE ? OR payer_address ILIKE ? OR tax_address ILIKE ?)`;
+            values.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
         }
 
         // Додаємо сортування
@@ -141,7 +141,9 @@ class CadasterRepository {
             );
         });
 
-        const sql = `
+        // ВИБІР ЛОГІКИ ОБРОБКИ КОНФЛІКТІВ:
+        // Варіант 1: НЕ оновлювати існуючі записи (поточна поведінка)
+        const sqlDoNothing = `
         INSERT INTO ower.cadaster_records (
             payer_name, payer_address, iban, plot_area,
             land_tax, tax_address, cadastral_number, uid
@@ -149,7 +151,26 @@ class CadasterRepository {
         ON CONFLICT (cadastral_number) DO NOTHING
         `;
 
-        const result = await sqlRequest(sql, allParams);
+        // Варіант 2: Оновлювати існуючі записи (альтернативна поведінка)
+        const sqlDoUpdate = `
+        INSERT INTO ower.cadaster_records (
+            payer_name, payer_address, iban, plot_area,
+            land_tax, tax_address, cadastral_number, uid
+        ) VALUES ${valueGroups.join(', ')}
+        ON CONFLICT (cadastral_number) DO UPDATE SET
+            payer_name = EXCLUDED.payer_name,
+            payer_address = EXCLUDED.payer_address,
+            iban = EXCLUDED.iban,
+            plot_area = EXCLUDED.plot_area,
+            land_tax = EXCLUDED.land_tax,
+            tax_address = EXCLUDED.tax_address,
+            updated_at = NOW()
+        WHERE cadaster_records.cadastral_number IS NOT NULL
+        `;
+
+        // ВИКОРИСТОВУЄМО ВАРІАНТ 1 (НЕ оновлювати)
+        // Якщо потрібно оновлювати дані, замініть sqlDoNothing на sqlDoUpdate
+        const result = await sqlRequest(sqlDoNothing, allParams);
         return batch.length; // Повертаємо кількість оброблених записів
     }
 

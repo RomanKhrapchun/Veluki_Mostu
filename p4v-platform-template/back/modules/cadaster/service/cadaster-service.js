@@ -1,62 +1,65 @@
-const cadasterRepository = require("../repository/cadaster-repository");
-const { fieldsListMissingError, NotFoundErrorMessage } = require("../../../utils/messages");
-const { paginate, paginationData } = require("../../../utils/function");
-const { displayCadasterFields, allowedCadasterTableFilterFields } = require("../../../utils/constants");
-const logRepository = require("../../log/repository/log-repository");
+const cadasterRepository = require('../repository/cadaster-repository');
+const logRepository = require('../../log/repository/log-repository');
+const { displayCadasterFields } = require('../../../utils/constants');
+const { fieldsListMissingError, NotFoundErrorMessage } = require('../../../utils/messages');
+const { paginationData } = require('../../../utils/function');
 
 class CadasterService {
 
     async findCadasterByFilter(request) {
-        if (!Object.keys([displayCadasterFields]).length) {
-            throw new Error(fieldsListMissingError);
+        const page = request?.body?.page || 1;
+        const limit = request?.body?.limit || 16;
+        
+        // Умови фільтрування
+        const whereConditions = {};
+        
+        // Фільтрування за ПІБ платника
+        if (request?.body?.payer_name) {
+            whereConditions.payer_name = request.body.payer_name;
         }
         
-        const { 
-            page = 1, 
-            limit = 16, 
-            search,
-            sort_by = null,
-            sort_direction = 'desc',
-            ...whereConditions 
-        } = request.body;
+        // Фільтрування за адресою платника
+        if (request?.body?.payer_address) {
+            whereConditions.payer_address = request.body.payer_address;
+        }
         
-        const { offset } = paginate(page, limit);
-        const { allowedCadasterSortFields } = require("../../../utils/constants");
+        // Фільтрування за податковою адресою платника
+        if (request?.body?.tax_address) {
+            whereConditions.tax_address = request.body.tax_address;
+        }
         
-        // Валідація сортування
-        const isValidSortField = sort_by && allowedCadasterSortFields.includes(sort_by);
-        const isValidSortDirection = ['asc', 'desc'].includes(sort_direction?.toLowerCase());
-
-        const validSortBy = isValidSortField ? sort_by : 'id';
-        const validSortDirection = isValidSortDirection ? sort_direction.toLowerCase() : 'desc';
-
-        console.log('🔄 Cadaster sorting params received:', { sort_by, sort_direction });
-        console.log('🔄 Validated cadaster sorting params:', { validSortBy, validSortDirection });
+        // Фільтрування за кадастровим номером
+        if (request?.body?.cadastral_number) {
+            whereConditions.cadastral_number = request.body.cadastral_number;
+        }
         
-        const allowedFields = allowedCadasterTableFilterFields
-            .filter(el => whereConditions.hasOwnProperty(el))
-            .reduce((acc, key) => ({ ...acc, [key]: whereConditions[key] }), {});
+        // Фільтрування за IBAN
+        if (request?.body?.iban) {
+            whereConditions.iban = request.body.iban;
+        }
 
-        console.log('🔍 Allowed filter fields:', allowedFields);
+        if (!Object.keys(displayCadasterFields).length) {
+            throw new Error(fieldsListMissingError);
+        }
 
         const cadasterData = await cadasterRepository.findCadasterByFilter(
             limit, 
-            offset, 
-            search, 
-            allowedFields, 
+            page, 
+            null, // title - не використовуємо для кадастру
+            whereConditions, 
             displayCadasterFields,
-            validSortBy,        // Додано параметр сортування
-            validSortDirection  // Додано напрямок сортування
+            request?.body?.sort_by,
+            request?.body?.sort_direction
         );
-        
-        // Логування пошуку
-        if (search || Object.keys(allowedFields).length) {
+
+        // Логування
+        if (Object.keys(whereConditions).length > 0) {
             await logRepository.createLog({
                 row_pk_id: null,
                 uid: request?.user?.id,
-                action: 'SEARCH',
+                action: 'SELECT',
                 client_addr: request?.ip,
-                application_name: 'Пошук кадастрових записів',
+                application_name: `Фільтрування кадастрових записів`,
                 action_stamp_tx: new Date(),
                 action_stamp_stm: new Date(),
                 action_stamp_clk: new Date(),
@@ -323,10 +326,11 @@ class CadasterService {
                     record.tax_address = record.payer_address || 'Не вказано';
                 }
 
-                // Валідація Кадастровий номер
+                // ОНОВЛЕНА ЛОГІКА: Валідація Кадастровий номер
                 if (!row['Кадастровий номер'] || !row['Кадастровий номер'].trim()) {
-                    // Генеруємо унікальний кадастровий номер
-                    record.cadastral_number = `AUTO_${Date.now()}_${index}`;
+                    // ЗМІНА: Замість генерування AUTO номера, залишаємо null
+                    // Це дозволить показувати "Інформація не надана" на фронтенді
+                    record.cadastral_number = null;
                 } else {
                     record.cadastral_number = row['Кадастровий номер'].trim();
                 }

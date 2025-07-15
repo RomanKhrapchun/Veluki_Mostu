@@ -82,19 +82,6 @@ const CadasterFilterDropdown = ({
                         />
                     </div>
 
-                    {/* Кадастровий номер */}
-                    <div className="filter-dropdown__item">
-                        <label className="filter-dropdown__label">Кадастровий номер</label>
-                        <Input
-                            icon={searchIcon}
-                            name="cadastral_number"
-                            type="text"
-                            placeholder="Введіть кадастровий номер"
-                            value={filterData?.cadastral_number || ''}
-                            onChange={onFilterChange}
-                        />
-                    </div>
-
                     {/* Адреса платника */}
                     <div className="filter-dropdown__item">
                         <label className="filter-dropdown__label">Адреса платника</label>
@@ -104,6 +91,32 @@ const CadasterFilterDropdown = ({
                             type="text"
                             placeholder="Введіть адресу платника"
                             value={filterData?.payer_address || ''}
+                            onChange={onFilterChange}
+                        />
+                    </div>
+
+                    {/* НОВЕ ПОЛЕ: Податкова адреса платника */}
+                    <div className="filter-dropdown__item">
+                        <label className="filter-dropdown__label">Податкова адреса платника</label>
+                        <Input
+                            icon={searchIcon}
+                            name="tax_address"
+                            type="text"
+                            placeholder="Введіть податкову адресу платника"
+                            value={filterData?.tax_address || ''}
+                            onChange={onFilterChange}
+                        />
+                    </div>
+
+                    {/* Кадастровий номер */}
+                    <div className="filter-dropdown__item">
+                        <label className="filter-dropdown__label">Кадастровий номер</label>
+                        <Input
+                            icon={searchIcon}
+                            name="cadastral_number"
+                            type="text"
+                            placeholder="Введіть кадастровий номер"
+                            value={filterData?.cadastral_number || ''}
                             onChange={onFilterChange}
                         />
                     </div>
@@ -120,31 +133,18 @@ const CadasterFilterDropdown = ({
                             onChange={onFilterChange}
                         />
                     </div>
-
-                    {/* Податкова адреса */}
-                    <div className="filter-dropdown__item">
-                        <label className="filter-dropdown__label">Податкова адреса</label>
-                        <Input
-                            icon={searchIcon}
-                            name="tax_address"
-                            type="text"
-                            placeholder="Введіть податкову адресу"
-                            value={filterData?.tax_address || ''}
-                            onChange={onFilterChange}
-                        />
-                    </div>
                 </div>
 
                 {/* Кнопки дій */}
                 <div className="filter-dropdown__footer">
                     <Button 
-                        className="filter-dropdown__apply"
+                        className="filter-dropdown__apply btn--primary"
                         onClick={onApplyFilter}
                     >
                         Застосувати
                     </Button>
                     <Button 
-                        className="filter-dropdown__reset"
+                        className="filter-dropdown__reset btn--secondary"
                         onClick={onResetFilters}
                     >
                         Скинути
