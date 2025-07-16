@@ -410,12 +410,11 @@ const CadasterList = () => {
             newErrors.land_tax = 'Земельний податок повинен бути більше 0';
         }
 
-        // Оновлена валідація: податкова адреса залишається обов'язковою
         if (!formData.tax_address.trim()) {
             newErrors.tax_address = 'Податкова адреса є обов\'язковою';
         }
 
-        // Оновлена валідація: кадастровий номер тепер не є обов'язковим
+        // ЗМІНЕНО: Кадастровий номер тепер НЕ обов'язковий
         // Але якщо він вводиться, то має бути валідним
         if (formData.cadastral_number.trim() && formData.cadastral_number.length <= 5) {
             newErrors.cadastral_number = 'Кадастровий номер має бути довше 5 символів';
@@ -982,13 +981,13 @@ const CadasterList = () => {
 
                             <FormItem 
                                 label="Кадастровий номер" 
-                                required 
+                                // ПРИБРАНО: required 
                                 error={stateCadaster.formErrors.cadastral_number}
                             >
                                 <Input
                                     value={stateCadaster.formData.cadastral_number}
                                     onChange={(_, value) => handleInputChange('cadastral_number', value)}
-                                    placeholder="Введіть кадастровий номер"
+                                    placeholder="Введіть кадастровий номер (необов'язково)"
                                     onKeyDown={handleKeyDown}
                                 />
                             </FormItem>
@@ -1096,13 +1095,13 @@ const CadasterList = () => {
 
                             <FormItem 
                                 label="Кадастровий номер" 
-                                required 
+                                // ПРИБРАНО: required
                                 error={stateCadaster.formErrors.cadastral_number}
                             >
                                 <Input
                                     value={stateCadaster.formData.cadastral_number}
                                     onChange={(_, value) => handleInputChange('cadastral_number', value)}
-                                    placeholder="Введіть кадастровий номер"
+                                    placeholder="Введіть кадастровий номер (необов'язково)"
                                     onKeyDown={handleKeyDown}
                                 />
                             </FormItem>
@@ -1181,9 +1180,10 @@ const CadasterList = () => {
                                 <div className="detail-item">
                                     <label className="detail-label">Кадастровий номер:</label>
                                     <div className="detail-value">
-                                        {!stateCadaster.viewingItem.cadastral_number || 
-                                         stateCadaster.viewingItem.cadastral_number.startsWith('AUTO_') ? 
-                                         'Інформація не надана' : stateCadaster.viewingItem.cadastral_number}
+                                        {stateCadaster.viewingItem.cadastral_number && 
+                                        stateCadaster.viewingItem.cadastral_number.trim() !== '' &&
+                                        !stateCadaster.viewingItem.cadastral_number.startsWith('AUTO_') ? 
+                                        stateCadaster.viewingItem.cadastral_number : 'Не вказано'}
                                     </div>
                                 </div>
                             </div>

@@ -51,63 +51,78 @@ const PrintCard = () => {
                 <React.Fragment>
                     <div className="print-card">
                         <div className="print-card__header">
-                            <p className="print-card__name">{data.name}</p>
-                            <p className="print-card__id">і.к. ХХХХХХХ{data?.identification}</p>
-                            {/* Додаємо кадастровий номер ТІЛЬКИ якщо він є та валідний */}
-                            {data?.cadastral_number && 
-                             data.cadastral_number.trim() !== '' && 
-                             !data.cadastral_number.startsWith('AUTO_') &&
-                             data.cadastral_number.length > 5 && (
-                                <p className="print-card__cadastral">Кадастровий номер: {data.cadastral_number}</p>
-                            )}
+                            <div className="print-card__header-spacer"></div>
+                            <div className="print-card__info-right">
+                                <p className="print-card__name">{data.name}</p>
+                                <p className="print-card__id">і.к. ХХХХХХХ{data?.identification}</p>
+                                {/* Додаємо кадастровий номер ТІЛЬКИ якщо він є та валідний */}
+                                {data?.cadastral_number && 
+                                 data.cadastral_number.trim() !== '' && 
+                                 !data.cadastral_number.startsWith('AUTO_') &&
+                                 data.cadastral_number.length > 5 && (
+                                    <p className="print-card__cadastral">Кадастровий номер: {data.cadastral_number}</p>
+                                )}
+                            </div>
                         </div>
                         <div className="print-card__title">Інформаційне повідомлення</div>
-                        <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{territory_title} повідомляє, що відповідно до даних ГУ ДПС у {GU_DPS_region},
-                            станом {formatDateUa(data.date)} у Вас наявна заборгованість до бюджету {territory_title_instrumental},&nbsp; а саме:
-                        </p>
-                        {data.debt && Array.isArray(data.debt) && data.debt.length ?
+                        <div className="print-card__main-text">
+                            <p>{territory_title} повідомляє, що відповідно до даних ГУ ДПС у {GU_DPS_region}, станом {formatDateUa(data.date)} р. у Вас наявна заборгованість до бюджету {territory_title_instrumental}, а саме:</p>
+                        </div>
+                        
+                        {data.debt && Array.isArray(data.debt) && data.debt.length ? 
                             data.debt.map((debt, debtIndex) => (
                                 <React.Fragment key={debtIndex}>
                                     {debt.map((item, itemIndex) => (
-                                        <React.Fragment key={itemIndex}>
-                                            <p className="print-card__payment-title">
-                                                {debtIndex + 1}.&nbsp;{item.debtText}
-                                            </p>
-                                            <div className="print-card__content">
-                                                <h4>{item.requisiteText}</h4>
-                                                <table className="print-card__table">
-                                                    <tbody>
-                                                    {item.table.map((row, index) => (
-                                                        <tr key={index}>
-                                                            <td className="print-card__table-cell">{row.label}</td>
-                                                            <td className="print-card__table-cell">{row.value}</td>
-                                                        </tr>
-                                                    ))}
-                                                    <tr>
-                                                        <td className="print-card__table-cell"><strong>Сума</strong></td>
-                                                        <td className="print-card__table-cell"><strong>{item.amount} грн</strong></td>
-                                                    </tr>
-                                                    </tbody>
-                                                </table>
+                                        <div key={itemIndex} className="print-card__debt-section">
+                                            {/* Текст заборгованості без нумерації */}
+                                            <div className="print-card__debt-text">
+                                                {(() => {
+                                                    // Розділяємо текст на основну частину та податкову адресу
+                                                    let mainText = item.debtText;
+                                                    let taxAddress = '';
+                                                    
+                                                    const addressMatch = mainText.match(/Податкова адреса платника:\s*(.+)\.?$/);
+                                                    if (addressMatch) {
+                                                        taxAddress = addressMatch[1].trim();
+                                                        mainText = mainText.replace(/\.\s*Податкова адреса платника:.*$/, '.');
+                                                    }
+                                                    
+                                                    return (
+                                                        <>
+                                                            <p className="print-card__debt-main">{mainText}</p>
+                                                            {taxAddress && (
+                                                                <p className="print-card__tax-address">
+                                                                    <span className="print-card__tax-label">Податкова адреса платника:</span> {taxAddress}.
+                                                                </p>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
-                                        </React.Fragment>
+                                            
+                                            {/* Реквізити в одному рядку */}
+                                            <div className="print-card__requisites">
+                                                <p className="print-card__requisites-line">
+                                                    <span className="print-card__requisites-label">{item.requisiteText}</span> Отримувач - {item.recipientInfo}
+                                                </p>
+                                            </div>
+                                        </div>
                                     ))}
                                 </React.Fragment>
                             )) : null}
-                        <p>
-                            В разі виникнення питань по даній заборгованості, звертайтесь у ГУ ДПС у {GU_DPS_region} за номером телефона {phone_number_GU_DPS}.
-                        </p>
-                        <p>
-                            Просимо терміново погасити утворену Вами заборгованість до бюджету {territory_title_instrumental}. Несвоєчасна сплата суми
-                            заборгованості призведе до нарахувань штрафних санкцій та пені.
-                        </p>
-                        <p>
-                            Перевірити заборгованість можна у застосунках <a
-                            href={website_url}>«{website_name}»</a> або
-                            через чат-бот в Telegram <a href={telegram_url}>«{telegram_name}»</a>. Вони дозволяють
-                            отримати актуальну інформацію щодо стану вашої заборгованості та оплатити її онлайн за
-                            допомогою QR-коду, що розміщений нижче.
-                        </p>
+                        
+                        <div className="print-card__footer-info">
+                            <p>
+                                В разі виникнення питань по даній заборгованості, звертайтесь у ГУ ДПС у {GU_DPS_region} за номером телефона {phone_number_GU_DPS}.
+                            </p>
+                            <p>
+                                Просимо терміново погасити утворену Вами заборгованість до бюджету {territory_title_instrumental}. Несвоєчасна сплата суми заборгованості призведе до нарахувань штрафних санкцій та пені.
+                            </p>
+                            <p>
+                                Перевірити заборгованість можна у застосунках <a href={website_url}>«{website_name}»</a> або через чат-бот в Telegram <a href={telegram_url}>«{telegram_name}»</a>. Вони дозволяють отримати актуальну інформацію щодо стану вашої заборгованості та оплатити її онлайн за допомогою QR-коду, що розміщений нижче.
+                            </p>
+                        </div>
+                        
                         <div style={{display: 'flex', justifyContent: 'flex-end'}}>
                             <img src={logo} alt={alt_qr_code} style={{width: 128, height: 128}}/>
                         </div>

@@ -1,77 +1,140 @@
-.print-card {
-    padding: 15px;
-}
-
-.print-card p {
-    font-size: 12px;
-}
-
-.print-card a {
-    font-size: 12px;
-    text-decoration: underline;
-    color: blue;
-}
+/* Додайте ці стилі до існуючого PrintCard.css */
 
 .print-card__header {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: end;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.print-card__header-spacer {
+    flex-grow: 1;
+}
+
+.print-card__info-right {
+    text-align: right;
+    min-width: 300px;
 }
 
 .print-card__name {
-    font-size: 13px;
+    font-size: 18px;
     font-weight: bold;
+    margin: 0 0 5px 0;
 }
 
 .print-card__id {
-    font-weight: bold;
-    font-style: italic;
-    font-size: 12px;
-}
-
-.print-card__title {
     font-size: 16px;
     font-weight: bold;
-    text-align: center;
-}
-
-.print-card__payment-title {
-    text-align: center;
-    font-weight: bold;
-}
-
-.print-card__content * {
-font-size: 12px;
-}
-
-.print-card__table {
-    border-collapse: collapse;
-    width: 100%;
-}
-
-.print-card__table-row{
-    border: 1px solid black;
-    text-align: left;
-    padding: 2px;
-}
-
-.print-card__table-cell {
-    border: 1px solid black;
-    text-align: left;
-    padding: 2px;
-}
-
-.print-card__buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
+    margin: 0 0 5px 0;
 }
 
 .print-card__cadastral {
-    font-weight: bold;
+    font-size: 14px;
     font-style: italic;
-    font-size: 12px;
-    margin-top: 5px;
-    color: #666;
+    margin: 0;
+}
+
+.print-card__title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    margin: 20px 0;
+}
+
+.print-card__main-text {
+    margin-bottom: 20px;
+}
+
+.print-card__main-text p {
+    text-indent: 1.27cm; /* Відступ першого рядка як у Word */
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+}
+
+.print-card__debt-section {
+    margin-bottom: 20px;
+}
+
+.print-card__debt-main {
+    text-indent: 1.27cm; /* Відступ першого рядка */
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+}
+
+.print-card__tax-address {
+    text-indent: 1.27cm; /* Додаємо відступ першого рядка */
+    margin: 10px 0;
+    line-height: 1.4;
+}
+
+.print-card__tax-label {
+    font-weight: bold;
+}
+
+.print-card__requisites {
+    margin: 10px 0;
+}
+
+.print-card__requisites-line {
+    text-indent: 1.27cm; /* Додаємо відступ першого рядка */
+    margin: 0;
+    line-height: 1.4;
+}
+
+.print-card__requisites-label {
+    font-weight: bold;
+}
+
+.print-card__footer-info {
+    margin-top: 20px;
+}
+
+.print-card__footer-info p {
+    text-indent: 1.27cm; /* Відступ першого рядка */
+    margin: 0 0 15px 0;
+    line-height: 1.4;
+}
+
+/* Приховуємо кнопки при друку */
+.print-card__buttons {
+    display: flex;
+    justify-content: flex-start; /* Змінено з center на flex-start для розташування зліва */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Стилі для друку */
+@media print {
+    .print-card__buttons {
+        display: none !important; /* Приховуємо кнопки при друку */
+    }
+    
+    .print-card__header {
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .print-card__info-right {
+        text-align: right;
+    }
+    
+    .print-card__main-text p,
+    .print-card__debt-main,
+    .print-card__tax-address,
+    .print-card__requisites-line,
+    .print-card__footer-info p {
+        text-indent: 1.27cm;
+    }
+    
+    /* Додаткове форматування для друку */
+    body {
+        margin: 0;
+        padding: 20px;
+    }
+    
+    .print-card {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }
 }

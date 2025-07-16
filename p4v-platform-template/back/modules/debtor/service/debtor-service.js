@@ -116,6 +116,18 @@ class DebtorService {
                 throw new Error(NotFoundErrorMessage)
             }
 
+            // Додаткові перевірки на null/undefined
+            if (!fetchData[0]) {
+                throw new Error("Дані боржника не знайдені або пошкоджені")
+            }
+
+            if (!fetchRequisite[0]) {
+                throw new Error("Реквізити не знайдені або пошкоджені")
+            }
+
+            console.log("📋 Дані боржника:", JSON.stringify(fetchData[0], null, 2));
+            console.log("📋 Реквізити:", JSON.stringify(fetchRequisite[0], null, 2));
+
             if (fetchData[0].non_residential_debt || fetchData[0].residential_debt || fetchData[0].land_debt > 0 || fetchData[0].orenda_debt || fetchData[0].mpz) {
                 const result = await createRequisiteWord(fetchData[0], fetchRequisite[0]);
                 

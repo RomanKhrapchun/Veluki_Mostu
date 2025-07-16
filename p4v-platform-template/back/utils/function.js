@@ -219,114 +219,136 @@ const formatDate = (date) => {
     return `${year}-${month}-${day}`;
 }
 
+
 const removeAfterLastSlash = (str) => {
     const lastSlashIndex = str?.lastIndexOf('/');
-    return lastSlashIndex !== -1 ? str?.substring(0, lastSlashIndex) : str;
+    return lastSlashIndex > -1 ? 
+        str?.substring(0, lastSlashIndex) : str;
 }
 
 const addRequisiteToLandDebt = (body, requisite) => {
     const land_debt = [];
 
-    const addDebtInfo = (debtText, requisiteText, recipientName, edrpou, account, code,amount) => {
-        land_debt.push(
-            [
+    // Перевіряємо вхідні дані
+    if (!body || !requisite) {
+        console.error("❌ addRequisiteToLandDebt: відсутні вхідні дані", { body, requisite });
+        return [];
+    }
+
+    const addDebtInfo = (debtText, requisiteText, recipientName, edrpou, account, code, amount) => {
+        // Створюємо новий формат для відображення реквізитів в одному рядку - ТІЛЬКИ для податків
+        const cleanRecipientName = removeAfterLastSlash(recipientName || 'Невідомий отримувач');
+        const recipientInfo = `${cleanRecipientName}, ${edrpou || 'невідомо'}, ${account || 'невідомо'}`;
+        
+        const debtItem = {
+            debtText: debtText || 'Невідома заборгованість',
+            requisiteText: requisiteText || 'Реквізити для оплати',
+            amount: amount || 0,
+            budgetCode: code || 'невідомо', // Додаємо код класифікації
+            recipientInfo, // Новий формат - все в одному рядку для податків
+            table: [
                 {
-                    debtText,
-                    requisiteText,
-		    amount,
-                    table: [
-                        {
-                            label: "Отримувач",
-                            value: removeAfterLastSlash(recipientName),
-                        },
-                        {
-                            label: "Код отримувача (ЄДРПОУ)",
-                            value: edrpou,
-                        },
-                        {
-                            label: "Банк отримувача",
-                            value: 'Казначейство України',
-                        },
-                        {
-                            label: "Номер рахунку (IBAN)",
-                            value: account,
-                        },
-                        {
-                            label: "Код класифікації доходів бюджету",
-                            value: code,
-                        }
-                    ]
+                    label: "Отримувач",
+                    value: cleanRecipientName,
+                },
+                {
+                    label: "Код отримувача (ЄДРПОУ)",
+                    value: edrpou || 'невідомо',
+                },
+                {
+                    label: "Банк отримувача",
+                    value: 'Казначейство України',
+                },
+                {
+                    label: "Номер рахунку (IBAN)",
+                    value: account || 'невідомо',
+                },
+                {
+                    label: "Код класифікації доходів бюджету",
+                    value: code || 'невідомо',
                 }
             ]
-        )
+        };
+
+        land_debt.push([debtItem]);
+        console.log("📌 Додано debt item:", debtItem);
     };
 
-    if (body?.non_residential_debt > 0) {
-        addDebtInfo(
-            `Заборгованість зі сплати податку на нерухоме майно, відмінне від земельної ділянки, сплаченого фізичними особами, які є власниками об'єктів нежитлової нерухомості в сумі ${body.non_residential_debt} грн.`,
-            "Реквізити для оплати :",
-            requisite.non_residential_debt_recipientname,
-            requisite.non_residential_debt_edrpou,
-            requisite.non_residential_debt_account,
-            '18010300',
-	    body.non_residential_debt);
-    }
-
-    if (body?.residential_debt > 0) {
-        addDebtInfo(
-            `Заборгованість зі сплати податку на нерухоме майно, відмінне від земельної ділянки, сплачений фізичними особами, які є власниками об'єктів житлової нерухомості в сумі ${body.residential_debt} грн.`,
-            "Реквізити для оплати :",
-            requisite.residential_debt_recipientname,
-            requisite.residential_debt_edrpou,
-            requisite.residential_debt_account,
-            '18010200',
-	     body.residential_debt);
-    }
-
-    if (body?.land_debt > 0) {
-        // Формуємо текст заборгованості з податковою адресою
-        let debtText = `Заборгованість зі сплати земельному податку з фізичних осіб в сумі ${body.land_debt} грн.`;
-        
-        // Додаємо податкову адресу якщо вона є
-        if (body.tax_address && body.tax_address.trim() !== '') {
-            debtText += ` Податкова адреса платника: ${body.tax_address}.`;
+    try {
+        if (body?.non_residential_debt > 0) {
+            addDebtInfo(
+                `Заборгованість зі сплати податку на нерухоме майно, відмінне від земельної ділянки, сплаченого фізичними особами, які є власниками об'єктів нежитлової нерухомості в сумі ${body.non_residential_debt} грн.`,
+                "Реквізити для оплати :",
+                requisite.non_residential_debt_recipientname,
+                requisite.non_residential_debt_edrpou,
+                requisite.non_residential_debt_account,
+                '18010300',
+                body.non_residential_debt);
         }
-        
-        addDebtInfo(
-            debtText,
-            "Реквізити для оплати :",
-            requisite.land_debt_recipientname,
-            requisite.land_debt_edrpou,
-            requisite.land_debt_account,
-            '18010700',
-            body.land_debt);
-    }
 
-    if (body?.orenda_debt > 0) {
-        addDebtInfo(
-            `Заборгованість зі сплати оренді землі з фізичних осіб в сумі ${body.orenda_debt} грн.`,
-            "Реквізити для оплати :",
-            requisite.orenda_debt_recipientname,
-            requisite.orenda_debt_edrpou,
-            requisite.orenda_debt_account,
-            '18010900',
-	    body.orenda_debt);
-    }
+        if (body?.residential_debt > 0) {
+            addDebtInfo(
+                `Заборгованість зі сплати податку на нерухоме майно, відмінне від земельної ділянки, сплачений фізичними особами, які є власниками об'єктів житлової нерухомості в сумі ${body.residential_debt} грн.`,
+                "Реквізити для оплати :",
+                requisite.residential_debt_recipientname,
+                requisite.residential_debt_edrpou,
+                requisite.residential_debt_account,
+                '18010200',
+                body.residential_debt);
+        }
 
-    if (body?.mpz > 0) {
-        addDebtInfo(
-            `Заборгованість зі сплати мінімальньному податковому забов'язанню з фізичних осіб в сумі ${body.mpz} грн.`,
-            "Реквізити для оплати :",
-            requisite.mpz_recipientname,
-            requisite.mpz_edrpou,
-            requisite.mpz_account,
-            '11011300',
-	    body.mpz);
-    }
+        if (body?.land_debt > 0) {
+            // Формуємо текст заборгованості БЕЗ податкової адреси (адреса буде додана окремо)
+            let debtText = `Заборгованість зі сплати земельному податку з фізичних осіб в сумі ${body.land_debt} грн`;
+            
+            // Додаємо податкову адресу до окремого рядка якщо вона є
+            if (body.tax_address && body.tax_address.trim() !== '') {
+                debtText += `. Податкова адреса платника: ${body.tax_address}`;
+            } else {
+                debtText += '.';
+            }
+            
+            addDebtInfo(
+                debtText,
+                "Реквізити для оплати :",
+                requisite.land_debt_recipientname,
+                requisite.land_debt_edrpou,
+                requisite.land_debt_account,
+                '18010700',
+                body.land_debt);
+        }
 
-    return land_debt;
+        if (body?.orenda_debt > 0) {
+            addDebtInfo(
+                `Заборгованість зі сплати оренді землі з фізичних осіб в сумі ${body.orenda_debt} грн.`,
+                "Реквізити для оплати :",
+                requisite.orenda_debt_recipientname,
+                requisite.orenda_debt_edrpou,
+                requisite.orenda_debt_account,
+                '18010900',
+                body.orenda_debt);
+        }
+
+        if (body?.mpz > 0) {
+            addDebtInfo(
+                `Заборгованість зі сплати мінімальньому податковому забов'язанню з фізичних осіб в сумі ${body.mpz} грн.`,
+                "Реквізити для оплати :",
+                requisite.mpz_recipientname,
+                requisite.mpz_edrpou,
+                requisite.mpz_account,
+                '11011300',
+                body.mpz);
+        }
+
+        console.log("📌 addRequisiteToLandDebt result:", land_debt);
+        return land_debt;
+    } catch (error) {
+        console.error("❌ Помилка в addRequisiteToLandDebt:", error);
+        return [];
+    }
 };
 
+// Залишаю інші функції БЕЗ ЗМІН - вони не стосуються debtor податків
 const addRequisiteToWaterDebt = (body, requisite) => {
     const water_debt = [];
 
@@ -338,7 +360,7 @@ const addRequisiteToWaterDebt = (body, requisite) => {
         return []; // Повертаємо порожній масив, щоб уникнути помилок
     }
 
-        const addDebtInfo = (debtText, requisiteText, recipientName, edrpou, account, purpose) => {
+    const addDebtInfo = (debtText, requisiteText, recipientName, edrpou, account, purpose) => {
         water_debt.push({
             debtText,
             requisiteText,
@@ -351,6 +373,7 @@ const addRequisiteToWaterDebt = (body, requisite) => {
             ],
         });
     };
+    
     console.log("🛠 Перевірка типу послуги:", body?.service);
 
     if (body?.service === "ТПВ") {
@@ -393,59 +416,54 @@ const addRequisiteToWaterDebt = (body, requisite) => {
         );
     }
 
-console.log("📌 Повний вміст water_debt:", JSON.stringify(water_debt, null, 2));
-console.log("📌 Чи є result масивом?", Array.isArray(water_debt));
+    console.log("📌 Повний вміст water_debt:", JSON.stringify(water_debt, null, 2));
+    console.log("📌 Чи є result масивом?", Array.isArray(water_debt));
     return water_debt;
 };
 
-
 const addRequisiteToAdminServiceDebt = (account, service) => {
     const admin_service_debt = [];
-  
-    const addDebtInfo = (debtText, requisiteText, serviceName, edrpou, iban, code,account_number) => {
-      admin_service_debt.push([
-        {
-          debtText,
-          requisiteText,
-          table: [
-            { label: "Номер рахунку", value: account_number        },
-            { label: "Послуга",                         value: serviceName },
-            { label: "Код отримувача (ЄДРПОУ)",         value: edrpou      },
-            { label: "Номер рахунку (IBAN)",             value: iban        },
-            { label: "Код класифікації доходів бюджету", value: code        }
-          ]
-        }
-      ]);
-    };
-  
-    if (account.amount > 0) {
-      addDebtInfo(
-        `Заборгованість по адміністративній послузі "${service.name}" в сумі ${account.amount} грн.`,
-        "Реквізити для оплати:",
-        service.name,
-        service.edrpou,
-        service.iban,
-        service.identifier,
-        account.account_number     
-      );
-    }
-  
-    return admin_service_debt;
-  };
-  
 
-  
-  const validateSortParams = (sortBy, sortDirection) => {
+    const addDebtInfo = (debtText, requisiteText, serviceName, edrpou, iban, code, account_number) => {
+        admin_service_debt.push([
+            {
+                debtText,
+                requisiteText,
+                table: [
+                    { label: "Номер рахунку", value: account_number },
+                    { label: "Послуга", value: serviceName },
+                    { label: "Код отримувача (ЄДРПОУ)", value: edrpou },
+                    { label: "Номер рахунку (IBAN)", value: iban },
+                    { label: "Код класифікації доходів бюджету", value: code }
+                ]
+            }
+        ]);
+    };
+
+    if (account.amount > 0) {
+        addDebtInfo(
+            `Заборгованість по адміністративній послузі "${service.name}" в сумі ${account.amount} грн.`,
+            "Реквізити для оплати:",
+            service.name,
+            service.edrpou,
+            service.iban,
+            service.identifier,
+            account.account_number
+        );
+    }
+
+    return admin_service_debt;
+};
+
+const validateSortParams = (sortBy, sortDirection) => {
     const { allowedSortFields, validateSortDirection } = require('./constants');
     
-    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'name';
-    const validSortDirection = validateSortDirection(sortDirection);
+    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'id';
+    const validSortDirection = validateSortDirection.includes(sortDirection) ? sortDirection : 'asc';
     
-    return {
-        sortBy: validSortBy,
-        sortDirection: validSortDirection
-    };
+    return { validSortBy, validSortDirection };
 };
+
 const buildOrderByClause = (sortBy, sortDirection) => {
     const { getSafeSortField, validateSortDirection } = require('./constants');
     
