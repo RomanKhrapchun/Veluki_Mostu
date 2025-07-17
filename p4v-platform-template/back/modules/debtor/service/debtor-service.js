@@ -4,6 +4,7 @@ const { paginate, paginationData, addRequisiteToLandDebt } = require("../../../u
 const { displayDebtorFields, allowedDebtorTableFilterFields, allowedSortFields } = require("../../../utils/constants");
 const { createRequisiteWord } = require("../../../utils/generateDocx");
 const logRepository = require("../../log/repository/log-repository");
+const { generateLandDebtDocument } = require("../../../utils/generateLandDebtDocument");
 
 class DebtorService {
 
@@ -125,14 +126,46 @@ class DebtorService {
                 throw new Error("Реквізити не знайдені або пошкоджені")
             }
 
-            console.log("📋 Дані боржника:", JSON.stringify(fetchData[0], null, 2));
-            console.log("📋 Реквізити:", JSON.stringify(fetchRequisite[0], null, 2));
+            const debtorData = fetchData[0];
+            const requisiteData = fetchRequisite[0];
 
-            if (fetchData[0].non_residential_debt || fetchData[0].residential_debt || fetchData[0].land_debt > 0 || fetchData[0].orenda_debt || fetchData[0].mpz) {
-                const result = await createRequisiteWord(fetchData[0], fetchRequisite[0]);
+            console.log("📋 Дані боржника:", JSON.stringify(debtorData, null, 2));
+            console.log("📋 Реквізити:", JSON.stringify(requisiteData, null, 2));
+
+            // Перевіряємо, чи є земельний борг
+            if (debtorData.land_debt && parseFloat(debtorData.land_debt) > 0) {
+                console.log("🏞️ Generating land debt document for amount:", debtorData.land_debt);
+                
+                // Використовуємо новий генератор для земельного боргу
+                const result = await generateLandDebtDocument(debtorData, requisiteData);
                 
                 await logRepository.createLog({
-                    row_pk_id: fetchData[0].id,
+                    row_pk_id: debtorData.id,
+                    uid: request?.user?.id,
+                    action: 'GENERATE_DOC',
+                    client_addr: request?.ip,
+                    application_name: 'Генерування документа земельного боргу',
+                    action_stamp_tx: new Date(),
+                    action_stamp_stm: new Date(),
+                    action_stamp_clk: new Date(),
+                    schema_name: 'ower',
+                    table_name: 'ower',
+                    oid: '16504',
+                });
+                
+                reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+                reply.header('Content-Disposition', `attachment; filename="land_debt_${new Date().toISOString().split('T')[0]}.docx"`);
+                return reply.send(result);
+            }
+            
+            // Якщо є інші види боргу, використовуємо стандартний генератор
+            if (debtorData.non_residential_debt || debtorData.residential_debt || debtorData.orenda_debt || debtorData.mpz) {
+                console.log("🏢 Generating standard debt document for other debt types");
+                
+                const result = await createRequisiteWord(debtorData, requisiteData);
+                
+                await logRepository.createLog({
+                    row_pk_id: debtorData.id,
                     uid: request?.user?.id,
                     action: 'GENERATE_DOC',
                     client_addr: request?.ip,
@@ -146,11 +179,12 @@ class DebtorService {
                 });
                 
                 reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-                reply.header('Content-Disposition', 'attachment; filename=generated.docx');
+                reply.header('Content-Disposition', `attachment; filename="debt_${new Date().toISOString().split('T')[0]}.docx"`);
                 return reply.send(result);
             }
 
             throw new Error("Немає даних для формування документу.")
+            
         } catch (error) {
             console.error('❌ Error in generateWordByDebtId:', error);
             throw error;

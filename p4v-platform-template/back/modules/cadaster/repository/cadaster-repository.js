@@ -306,6 +306,49 @@ class CadasterRepository {
             return 0;
         }
     }
+
+    async getIndividualCadastralRecords(payerName) {
+        const sql = `
+            SELECT 
+                id,
+                cadastral_number, 
+                tax_address, 
+                land_tax,
+                plot_area,
+                payer_address
+            FROM ower.cadaster_records 
+            WHERE payer_name = ? 
+            ORDER BY 
+                CASE 
+                    WHEN cadastral_number IS NOT NULL 
+                        AND cadastral_number != '' 
+                        AND NOT cadastral_number LIKE 'AUTO_%' 
+                        AND LENGTH(cadastral_number) > 5 
+                    THEN 0 
+                    ELSE 1 
+                END,
+                id ASC
+        `;
+        
+        try {
+            const result = await sqlRequest(sql, [payerName]);
+            
+            console.log(`📊 Individual cadastral records for ${payerName}:`, {
+                total_records: result.length,
+                records: result.map(r => ({
+                    id: r.id,
+                    cadastral: r.cadastral_number,
+                    tax: r.land_tax,
+                    address: r.tax_address ? r.tax_address.substring(0, 50) + '...' : null
+                }))
+            });
+
+            return result;
+        } catch (error) {
+            console.error('❌ Database error in getIndividualCadastralRecords:', error);
+            return [];
+        }
+    }
 }
 
 module.exports = new CadasterRepository();

@@ -117,7 +117,7 @@ const DebtorList = () => {
                     <span style={{
                         color: numValue > 0 ? '#e74c3c' : '#6c757d',
                         fontWeight: numValue > 0 ? '500' : 'normal',
-                        fontSize: '12px'
+                        fontSize: '14px'  // ← ЗМІНЕНО з '12px' на '14px'
                     }}>
                         {numValue.toFixed(2)}
                     </span>
@@ -174,7 +174,7 @@ const DebtorList = () => {
                         <span style={{
                             fontWeight: 'bold', 
                             color: numValue > 0 ? '#e74c3c' : '#27ae60',
-                            fontSize: '13px'
+                            fontSize: '15px'  // ← ЗМІНЕНО з '13px' на '15px'
                         }}>
                             {numValue.toFixed(2)}
                         </span>
@@ -182,18 +182,18 @@ const DebtorList = () => {
                 }, '80px'),
                 createSortableColumn('Кадастр.', 'cadastral_number', (value) => {
                     if (!value || value.trim() === '') {
-                        return <span style={{ color: '#999', fontSize: '11px' }}>Немає</span>;
+                        return <span style={{ color: '#999', fontSize: '12px' }}>Немає</span>; // ← ЗМІНЕНО з '11px' на '12px'
                     }
 
                     return (
                         <span 
                             title={value} 
                             style={{ 
-                                fontSize: '9px', 
+                                fontSize: '11px',  // ← ЗМІНЕНО з '9px' на '11px'
                                 color: '#333', 
                                 lineHeight: '1.2',
-                                wordBreak: 'break-all',  // Дозволяємо перенос довгих номерів
-                                display: 'block'         // Блокове відображення для кращого переносу
+                                wordBreak: 'break-all',
+                                display: 'block'
                             }}
                         >
                             {value}

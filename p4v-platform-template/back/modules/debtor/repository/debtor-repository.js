@@ -155,37 +155,55 @@ class DebtorRepository {
 
     // НОВА ФУНКЦІЯ: Оновлення land_debt з даних кадастру
     async updateLandDebtFromCadaster(debtors) {
-            if (!Array.isArray(debtors)) return;
+        if (!Array.isArray(debtors)) return;
             
-            const cadasterRepository = require("../../cadaster/repository/cadaster-repository");
+        const cadasterRepository = require("../../cadaster/repository/cadaster-repository");
             
-            for (let debtor of debtors) {
-                try {
-                    // Отримуємо всі кадастрові дані для цього боржника
-                    const cadastralData = await cadasterRepository.getAllCadastralDataByPayerName(debtor.name);
+        for (let debtor of debtors) {
+            try {
+                // Отримуємо всі кадастрові дані для цього боржника
+                const cadastralData = await cadasterRepository.getAllCadastralDataByPayerName(debtor.name);
                     
-                    // ❌ ВИМКНЕНО: НЕ змінюємо land_debt, оскільки в БД вже правильні значення
-                    // Тільки додаємо кадастрові номери для відображення
-                    console.log(`✅ Залишаємо land_debt як в БД: ${debtor.land_debt} для ${debtor.name}`);
+                // ❌ ВИМКНЕНО: НЕ змінюємо land_debt, оскільки в БД вже правильні значення
+                // Тільки додаємо кадастрові номери для відображення
+                console.log(`✅ Залишаємо land_debt як в БД: ${debtor.land_debt} для ${debtor.name}`);
                     
-                    // Перерахунок total_debt БЕЗ додавання кадастру
-                    const nonResidential = parseFloat(debtor.non_residential_debt) || 0;
-                    const residential = parseFloat(debtor.residential_debt) || 0;
-                    const landDebt = parseFloat(debtor.land_debt) || 0; // Беремо як є з БД
-                    const orenda = parseFloat(debtor.orenda_debt) || 0;
-                    const mpz = parseFloat(debtor.mpz) || 0;
+                // Перерахунок total_debt БЕЗ додавання кадастру
+                const nonResidential = parseFloat(debtor.non_residential_debt) || 0;
+                const residential = parseFloat(debtor.residential_debt) || 0;
+                const landDebt = parseFloat(debtor.land_debt) || 0; // Беремо як є з БД
+                const orenda = parseFloat(debtor.orenda_debt) || 0;
+                const mpz = parseFloat(debtor.mpz) || 0;
                     
-                    const totalDebt = Math.round((nonResidential + residential + landDebt + orenda + mpz) * 100) / 100;
+                const totalDebt = Math.round((nonResidential + residential + landDebt + orenda + mpz) * 100) / 100;
                     
-                    debtor.total_debt = totalDebt;
+                debtor.total_debt = totalDebt;
                     
-                    console.log(`📊 Загальний борг для ${debtor.name}: ${totalDebt} (БЕЗ додавання кадастру)`);
-                } catch (error) {
-                    console.error(`❌ Помилка обробки даних для ${debtor.name}:`, error);
-                    // Продовжуємо для інших боржників
-                }
+                console.log(`📊 Загальний борг для ${debtor.name}: ${totalDebt} (БЕЗ додавання кадастру)`);
+            } catch (error) {
+                console.error(`❌ Помилка обробки даних для ${debtor.name}:`, error);
+                // Продовжуємо для інших боржників
             }
         }
+    }
+
+    async getRequisite() {
+        try {
+            console.log('🏦 Getting requisites from ower.settings');
+            const result = await sqlRequest('select * from ower.settings ORDER BY date DESC LIMIT 1');
+            
+            if (!result.length) {
+                console.log('⚠️ No settings found in database');
+            } else {
+                console.log('✅ Settings found for date:', result[0].date);
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('❌ Error getting requisites:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new DebtorRepository();
