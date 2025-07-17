@@ -59,22 +59,25 @@ const PrintCard = () => {
                     <div className="print-card">
                         {/* Заголовок з ПІБ та і.к. */}
                         <div className="print-card__header">
-                            <h1 className="print-card__name" style={{ 
-                                fontSize: '16px', 
-                                fontWeight: 'bold', 
-                                marginBottom: '8px',
-                                textAlign: 'center' 
-                            }}>
-                                {data.name}
-                            </h1>
-                            <p className="print-card__id" style={{ 
-                                fontSize: '14px', 
-                                fontWeight: 'bold',
-                                marginBottom: '16px',
-                                textAlign: 'center' 
-                            }}>
-                                і.к. ХХХХХХХ{data?.identification?.slice(-3) || '000'}
-                            </p>
+                            <div className="print-card__header-spacer"></div>
+                            <div className="print-card__info-right">
+                                <h1 className="print-card__name" style={{ 
+                                    fontSize: '16px', 
+                                    fontWeight: 'bold', 
+                                    marginBottom: '8px',
+                                    textAlign: 'right' 
+                                }}>
+                                    {data.name}
+                                </h1>
+                                <p className="print-card__id" style={{ 
+                                    fontSize: '16px', 
+                                    fontWeight: 'bold',
+                                    marginBottom: '16px',
+                                    textAlign: 'right' 
+                                }}>
+                                    і.к. ХХХХХХХ{data?.identification?.slice(-3) || '000'}
+                                </p>
+                            </div>
                         </div>
 
                         {/* Назва документа */}
@@ -87,20 +90,25 @@ const PrintCard = () => {
                             Інформаційне повідомлення
                         </div>
 
-                        {/* Вступний текст */}
-                        <p style={{ textAlign: 'justify', marginBottom: '16px', lineHeight: '1.4' }}>
+                        {/* Вступний текст - ✅ 13pt */}
+                        <p style={{ 
+                            textAlign: 'justify', 
+                            marginBottom: '16px', 
+                            lineHeight: '1.4',
+                            fontSize: '13pt' // ✅ 13pt для основного тексту
+                        }}>
                             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{territory_title} повідомляє, що відповідно до даних ГУ ДПС у {GU_DPS_region}, 
                             станом {formatDateUa(data.date)} у Вас наявна заборгованість до бюджету {territory_title_instrumental}, а саме:
                         </p>
 
-                        {/* Основна таблиця з нарахуваннями */}
-                        {data.debt && Array.isArray(data.debt) && data.debt.length > 0 ? (
+                        {/* ✅ НОВА: Основна таблиця з використанням tableRows */}
+                        {data.tableRows && Array.isArray(data.tableRows) && data.tableRows.length > 0 ? (
                             <div style={{ marginBottom: '20px' }}>
                                 <table style={{ 
                                     width: '100%', 
                                     borderCollapse: 'collapse',
                                     border: '1px solid #000',
-                                    fontSize: '12px'
+                                    fontSize: '11pt' // ✅ 11pt для таблиці
                                 }}>
                                     <thead>
                                         <tr style={{ backgroundColor: '#f5f5f5' }}>
@@ -108,7 +116,8 @@ const PrintCard = () => {
                                                 border: '1px solid #000', 
                                                 padding: '8px', 
                                                 textAlign: 'center',
-                                                fontWeight: 'bold'
+                                                fontWeight: 'bold',
+                                                fontSize: '12pt' // ✅ 12pt для заголовків
                                             }}>
                                                 Податкова адреса платника
                                             </th>
@@ -116,7 +125,8 @@ const PrintCard = () => {
                                                 border: '1px solid #000', 
                                                 padding: '8px', 
                                                 textAlign: 'center',
-                                                fontWeight: 'bold'
+                                                fontWeight: 'bold',
+                                                fontSize: '12pt' // ✅ 12pt для заголовків
                                             }}>
                                                 Кадастровий номер
                                             </th>
@@ -124,7 +134,82 @@ const PrintCard = () => {
                                                 border: '1px solid #000', 
                                                 padding: '8px', 
                                                 textAlign: 'center',
-                                                fontWeight: 'bold'
+                                                fontWeight: 'bold',
+                                                fontSize: '12pt' // ✅ 12pt для заголовків
+                                            }}>
+                                                Нарахування
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.tableRows.map((row, index) => (
+                                            <tr key={index}>
+                                                <td style={{ 
+                                                    border: '1px solid #000', 
+                                                    padding: '8px',
+                                                    verticalAlign: 'top',
+                                                    fontSize: '11pt' // ✅ 11pt для даних
+                                                }}>
+                                                    {row.taxAddress || 'Адреса не вказана'}
+                                                </td>
+                                                <td style={{ 
+                                                    border: '1px solid #000', 
+                                                    padding: '8px',
+                                                    textAlign: 'center',
+                                                    verticalAlign: 'top',
+                                                    fontSize: '11pt' // ✅ 11pt для даних
+                                                }}>
+                                                    {row.cadastralNumber || ''}
+                                                </td>
+                                                <td style={{ 
+                                                    border: '1px solid #000', 
+                                                    padding: '8px',
+                                                    textAlign: 'right',
+                                                    verticalAlign: 'top',
+                                                    fontSize: '11pt' // ✅ 11pt для даних
+                                                }}>
+                                                    {row.amount}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : data.debt && Array.isArray(data.debt) && data.debt.length > 0 ? (
+                            // ✅ Fallback для старого формату
+                            <div style={{ marginBottom: '20px' }}>
+                                <table style={{ 
+                                    width: '100%', 
+                                    borderCollapse: 'collapse',
+                                    border: '1px solid #000',
+                                    fontSize: '11pt'
+                                }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#f5f5f5' }}>
+                                            <th style={{ 
+                                                border: '1px solid #000', 
+                                                padding: '8px', 
+                                                textAlign: 'center',
+                                                fontWeight: 'bold',
+                                                fontSize: '12pt'
+                                            }}>
+                                                Податкова адреса платника
+                                            </th>
+                                            <th style={{ 
+                                                border: '1px solid #000', 
+                                                padding: '8px', 
+                                                textAlign: 'center',
+                                                fontWeight: 'bold',
+                                                fontSize: '12pt'
+                                            }}>
+                                                Кадастровий номер
+                                            </th>
+                                            <th style={{ 
+                                                border: '1px solid #000', 
+                                                padding: '8px', 
+                                                textAlign: 'center',
+                                                fontWeight: 'bold',
+                                                fontSize: '12pt'
                                             }}>
                                                 Нарахування
                                             </th>
@@ -141,7 +226,8 @@ const PrintCard = () => {
                                                     <td style={{ 
                                                         border: '1px solid #000', 
                                                         padding: '8px',
-                                                        verticalAlign: 'top'
+                                                        verticalAlign: 'top',
+                                                        fontSize: '11pt'
                                                     }}>
                                                         {data.tax_address || 'Адреса не вказана'}
                                                     </td>
@@ -149,7 +235,8 @@ const PrintCard = () => {
                                                         border: '1px solid #000', 
                                                         padding: '8px',
                                                         textAlign: 'center',
-                                                        verticalAlign: 'top'
+                                                        verticalAlign: 'top',
+                                                        fontSize: '11pt'
                                                     }}>
                                                         {data.cadastral_number || ''}
                                                     </td>
@@ -157,7 +244,8 @@ const PrintCard = () => {
                                                         border: '1px solid #000', 
                                                         padding: '8px',
                                                         textAlign: 'right',
-                                                        verticalAlign: 'top'
+                                                        verticalAlign: 'top',
+                                                        fontSize: '11pt'
                                                     }}>
                                                         {amount}
                                                     </td>
@@ -171,62 +259,99 @@ const PrintCard = () => {
                             <p>Немає даних про заборгованість.</p>
                         )}
 
-                        {/* Підсумкова секція */}
-                        {data.debt && Array.isArray(data.debt) && data.debt.length > 0 && (
+                        {/* ✅ ОНОВЛЕНА: Підсумкова секція з правильними сумами */}
+                        {(data.tableRows && data.tableRows.length > 0) || (data.debt && data.debt.length > 0) ? (
                             <div style={{ 
                                 marginBottom: '20px',
-                                padding: '12px',
-                                backgroundColor: '#f9f9f9',
-                                border: '1px solid #ddd',
-                                borderRadius: '4px'
+                                fontSize: '13pt' // ✅ 13pt для основного тексту
                             }}>
-                                {/* Окрема заборгованість з земельного податку */}
-                                <blockquote style={{ 
-                                    margin: '0 0 10px 0',
-                                    padding: '8px',
-                                    borderLeft: '3px solid #007bff',
-                                    backgroundColor: '#fff'
+                                {/* ✅ Заборгованість з земельного податку (ТІЛЬКИ земельний податок) */}
+                                <p style={{ 
+                                    margin: '8px 0 4px 0',
+                                    fontSize: '13pt',
+                                    lineHeight: '1.2'
                                 }}>
-                                    Заборгованість з земельного податку з фіз. осіб на суму{' '}
+                                    Заборгованість з земельного податку з{' '}
+                                    <u>фіз. осіб</u> на суму{' '}
                                     <strong>
-                                        {(() => {
-                                            // Обчислюємо загальну суму земельного податку
-                                            const landTaxTotal = data.debt
-                                                .filter(item => item.debtText?.includes('земельний'))
-                                                .reduce((sum, item) => {
-                                                    const match = item.debtText?.match(/(\d+[,.]?\d*)/);
-                                                    return sum + (match ? parseFloat(match[1].replace(',', '.')) : 0);
-                                                }, 0);
-                                            return landTaxTotal.toFixed(2);
-                                        })()} грн.
+                                        {/* ✅ ВИКОРИСТОВУЄМО landTaxAmount з бекенду */}
+                                        {data.landTaxAmount || 
+                                            (() => {
+                                                // Fallback: обчислюємо тільки земельний податок
+                                                if (data.tableRows) {
+                                                    const landTaxTotal = data.tableRows
+                                                        .filter(row => row.debtType === 'land_debt')
+                                                        .reduce((sum, row) => sum + parseFloat(row.amount), 0);
+                                                    return landTaxTotal.toFixed(2);
+                                                } else if (data.debt) {
+                                                    const landTaxTotal = data.debt
+                                                        .filter(item => item.debtText?.includes('земельний'))
+                                                        .reduce((sum, item) => {
+                                                            const match = item.debtText?.match(/(\d+[,.]?\d*)/);
+                                                            return sum + (match ? parseFloat(match[1].replace(',', '.')) : 0);
+                                                        }, 0);
+                                                    return landTaxTotal.toFixed(2);
+                                                }
+                                                return '0.00';
+                                            })()
+                                        } грн.
                                     </strong>
-                                    <br />
+                                </p>
+                                
+                                {/* ✅ Загальна сума (всі борги) */}
+                                <p style={{ 
+                                    margin: '4px 0 8px 0',
+                                    fontSize: '13pt',
+                                    lineHeight: '1.2'
+                                }}>
                                     <strong>
                                         Загальна сума:{' '}
-                                        {(() => {
-                                            // Обчислюємо загальну суму всіх боргів
-                                            const totalSum = data.debt.reduce((sum, item) => {
-                                                const match = item.debtText?.match(/(\d+[,.]?\d*)/);
-                                                return sum + (match ? parseFloat(match[1].replace(',', '.')) : 0);
-                                            }, 0);
-                                            return totalSum.toFixed(2).replace('.', ',');
-                                        })()} грн
+                                        {/* ✅ ВИКОРИСТОВУЄМО totalAmount з бекенду */}
+                                        {data.totalAmount || 
+                                            (() => {
+                                                // Fallback: обчислюємо загальну суму всіх боргів
+                                                if (data.tableRows) {
+                                                    const totalSum = data.tableRows.reduce((sum, row) => 
+                                                        sum + parseFloat(row.amount), 0);
+                                                    return totalSum.toFixed(2);
+                                                } else if (data.debt) {
+                                                    const totalSum = data.debt.reduce((sum, item) => {
+                                                        const match = item.debtText?.match(/(\d+[,.]?\d*)/);
+                                                        return sum + (match ? parseFloat(match[1].replace(',', '.')) : 0);
+                                                    }, 0);
+                                                    return totalSum.toFixed(2);
+                                                }
+                                                return '0.00';
+                                            })()
+                                        } грн
                                     </strong>
-                                </blockquote>
+                                </p>
                             </div>
-                        )}
+                        ) : null}
 
-                        {/* Контактна інформація */}
+                        {/* ✅ Контактна інформація з правильним розміром тексту */}
                         <div className="print-card__footer-info">
-                            <p style={{ marginBottom: '12px' }}>
+                            <p style={{ 
+                                marginBottom: '12px',
+                                fontSize: '13pt', // ✅ 13pt для основного тексту
+                                textAlign: 'justify'
+                            }}>
                                 В разі виникнення питань по даній заборгованості, звертайтесь у ГУ ДПС у {GU_DPS_region} за номером телефона {phone_number_GU_DPS}.
                             </p>
                             
-                            <p style={{ marginBottom: '12px' }}>
+                            <p style={{ 
+                                marginBottom: '12px',
+                                fontSize: '13pt', // ✅ 13pt для основного тексту
+                                textAlign: 'justify'
+                            }}>
                                 Просимо терміново погасити утворену Вами заборгованість до бюджету {territory_title_instrumental}. Несвоєчасна сплата суми заборгованості призведе до нарахувань штрафних санкцій та пені.
                             </p>
                             
-                            <p style={{ marginBottom: '16px' }}>
+                            <p style={{ 
+                                marginBottom: '16px',
+                                fontSize: '13pt', // ✅ 13pt для основного тексту
+                                textAlign: 'justify'
+                            }}>
                                 Перевірити заборгованість можна у застосунках{' '}
                                 <a href={website_url} target="_blank" rel="noopener noreferrer">
                                     «{website_name}»
@@ -240,7 +365,7 @@ const PrintCard = () => {
                             
                             {/* QR-код */}
                             <div className="print-card__qr-section" style={{ 
-                                textAlign: 'center',
+                                textAlign: 'right', // ✅ Справа як на зразку
                                 marginTop: '20px'
                             }}>
                                 <img 
@@ -253,16 +378,6 @@ const PrintCard = () => {
                                         border: '1px solid #ddd'
                                     }}
                                 />
-                                <div className="print-card__qr-info">
-                                    <p className="print-card__qr-text" style={{ 
-                                        fontSize: '12px',
-                                        marginTop: '8px'
-                                    }}>
-                                        <a href={website_url_p4v} target="_blank" rel="noopener noreferrer">
-                                            {website_url_p4v}
-                                        </a>
-                                    </p>
-                                </div>
                             </div>
                         </div>
                     </div>

@@ -140,35 +140,45 @@ class DebtorService {
                     // Створюємо структуру для таблиці
                     const tableRows = [];
                     let totalAmount = 0;
-                    let landTaxAmount = 0;
+                    let landTaxAmount = 0; // ✅ ТІЛЬКИ земельний податок
 
-                    // ✅ ТІЛЬКИ ЗЕМЕЛЬНИЙ ПОДАТОК: Фільтруємо валідні кадастрові номери
+                    // ✅ НОВИЙ: Обчислюємо загальну суму ВСІХ боргів спочатку
+                    const nonResidential = parseFloat(debtorData.non_residential_debt) || 0;
+                    const residential = parseFloat(debtorData.residential_debt) || 0;
+                    const landDebt = parseFloat(debtorData.land_debt) || 0;
+                    const orenda = parseFloat(debtorData.orenda_debt) || 0;
+                    const mpz = parseFloat(debtorData.mpz) || 0;
+
+                    totalAmount = nonResidential + residential + landDebt + orenda + mpz;
+
+                    // ✅ ВКЛЮЧАЄМО ВСІ записи з land_tax > 0, незалежно від кадастрового номера
                     if (detailedCadastralData && detailedCadastralData.length > 0) {
                         detailedCadastralData.forEach(item => {
                             const amount = parseFloat(item.land_tax) || 0;
                             const cadastralNumber = item.cadastral_number;
                             
-                            // ✅ Фільтруємо тільки валідні кадастрові номери для земельного податку
-                            if (amount > 0 && cadastralNumber && 
-                                !cadastralNumber.startsWith('AUTO_') && 
-                                cadastralNumber.trim() !== '' &&
-                                cadastralNumber.length > 5) {
-                                
-                                totalAmount += amount;
+                            // ✅ ВИПРАВЛЕНО: Включаємо ВСІ записи з податком > 0
+                            if (amount > 0) {
+                                // ✅ landTaxAmount - це ТІЛЬКИ земельний податок з кадастру
                                 landTaxAmount += amount;
+                                
+                                // ✅ Очищуємо кадастровий номер, але залишаємо запис
+                                const cleanCadastralNumber = (cadastralNumber && 
+                                                            !cadastralNumber.startsWith('AUTO_') && 
+                                                            cadastralNumber.trim() !== '' &&
+                                                            cadastralNumber.length > 5) ? cadastralNumber : '';
                                 
                                 tableRows.push({
                                     taxAddress: item.tax_address || debtorData.tax_address || 'Не вказано',
-                                    cadastralNumber: cadastralNumber,
+                                    cadastralNumber: cleanCadastralNumber,
                                     amount: amount.toFixed(2)
                                 });
                             }
                         });
 
-                        // ✅ ЗБЕРЕЖЕНО: Додаємо інші типи боргів окремими рядками
+                        // ✅ ДОДАЄМО інші типи боргів (НЕ включаємо в landTaxAmount)
                         if (debtorData.non_residential_debt > 0) {
                             const amount = parseFloat(debtorData.non_residential_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -178,7 +188,6 @@ class DebtorService {
                         
                         if (debtorData.residential_debt > 0) {
                             const amount = parseFloat(debtorData.residential_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -188,7 +197,6 @@ class DebtorService {
                         
                         if (debtorData.orenda_debt > 0) {
                             const amount = parseFloat(debtorData.orenda_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -198,7 +206,6 @@ class DebtorService {
                         
                         if (debtorData.mpz > 0) {
                             const amount = parseFloat(debtorData.mpz);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -206,79 +213,89 @@ class DebtorService {
                             });
                         }
                     } else {
-                        // ✅ ЗБЕРЕЖЕНО: Fallback логіка з оригіналу
+                        // ✅ FALLBACK логіка
                         const cadastralNumbers = debtorData.cadastral_number ? 
                             debtorData.cadastral_number.split(',').map(num => num.trim()) : [''];
                         
-                        const landAmount = parseFloat(debtorData.land_debt);
-                        landTaxAmount = landAmount;
-                        totalAmount = landAmount;
-                        
-                        // ✅ ВИПРАВЛЕНО: Фільтруємо AUTO_ номери
-                        const validCadastralNumbers = cadastralNumbers.filter(num => 
-                            num && !num.startsWith('AUTO_') && num.length > 5
-                        );
-                        
-                        if (validCadastralNumbers.length > 0) {
-                            const amountPerCadaster = validCadastralNumbers.length > 1 ? 
-                                landAmount / validCadastralNumbers.length : landAmount;
-                            
-                            validCadastralNumbers.forEach(cadNum => {
-                                tableRows.push({
-                                    taxAddress: debtorData.tax_address || 'Не вказано',
-                                    cadastralNumber: cadNum,
-                                    amount: amountPerCadaster.toFixed(2)
-                                });
-                            });
-                        }
-
-                        // ✅ ЗБЕРЕЖЕНО: Додаємо інші типи боргів
+                        // Додаємо рядки для кожного типу боргу
                         if (debtorData.non_residential_debt > 0) {
-                            totalAmount += parseFloat(debtorData.non_residential_debt);
+                            const amount = parseFloat(debtorData.non_residential_debt);
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
-                                cadastralNumber: '',
-                                amount: parseFloat(debtorData.non_residential_debt).toFixed(2)
+                                cadastralNumber: cadastralNumbers[0] || '',
+                                amount: amount.toFixed(2)
                             });
                         }
                         
                         if (debtorData.residential_debt > 0) {
-                            totalAmount += parseFloat(debtorData.residential_debt);
+                            const amount = parseFloat(debtorData.residential_debt);
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
-                                cadastralNumber: '',
-                                amount: parseFloat(debtorData.residential_debt).toFixed(2)
+                                cadastralNumber: cadastralNumbers[0] || '',
+                                amount: amount.toFixed(2)
                             });
                         }
                         
+                        if (debtorData.land_debt > 0) {
+                            const amount = parseFloat(debtorData.land_debt);
+                            // ✅ landTaxAmount - це земельний податок з основної БД
+                            landTaxAmount = amount;
+                            
+                            // ✅ ВИПРАВЛЕНО: Фільтруємо AUTO_ номери для земельного податку
+                            const validCadastralNumbers = cadastralNumbers.filter(num => 
+                                num && !num.startsWith('AUTO_') && num.length > 5
+                            );
+                            
+                            if (validCadastralNumbers.length > 0) {
+                                const amountPerCadaster = validCadastralNumbers.length > 1 ? 
+                                    amount / validCadastralNumbers.length : amount;
+                                
+                                validCadastralNumbers.forEach(cadNum => {
+                                    tableRows.push({
+                                        taxAddress: debtorData.tax_address || 'Не вказано',
+                                        cadastralNumber: cadNum,
+                                        amount: amountPerCadaster.toFixed(2)
+                                    });
+                                });
+                            } else {
+                                tableRows.push({
+                                    taxAddress: debtorData.tax_address || 'Не вказано',
+                                    cadastralNumber: '',
+                                    amount: amount.toFixed(2)
+                                });
+                            }
+                        }
+                        
                         if (debtorData.orenda_debt > 0) {
-                            totalAmount += parseFloat(debtorData.orenda_debt);
+                            const amount = parseFloat(debtorData.orenda_debt);
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
-                                cadastralNumber: '',
-                                amount: parseFloat(debtorData.orenda_debt).toFixed(2)
+                                cadastralNumber: cadastralNumbers[0] || '',
+                                amount: amount.toFixed(2)
                             });
                         }
                         
                         if (debtorData.mpz > 0) {
-                            totalAmount += parseFloat(debtorData.mpz);
+                            const amount = parseFloat(debtorData.mpz);
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
-                                amount: parseFloat(debtorData.mpz).toFixed(2)
+                                amount: amount.toFixed(2)
                             });
                         }
                     }
+
+                    console.log(`📊 Підрахунок сум: landTaxAmount=${landTaxAmount.toFixed(2)}, totalAmount=${totalAmount.toFixed(2)}`);
 
                     // ✅ НОВИЙ: Використовуємо новий генератор для земельного податку  
                     const result = await generateLandDebtDocument(
                         debtorData, 
                         requisiteData,
                         tableRows, 
-                        landTaxAmount.toFixed(2), 
-                        totalAmount.toFixed(2)
+                        landTaxAmount.toFixed(2), // ТІЛЬКИ земельний податок
+                        totalAmount.toFixed(2)    // ВСІ борги
                     );
-                    
+                                        
                     await logRepository.createLog({
                         row_pk_id: debtorData.id,
                         uid: request?.user?.id,
@@ -365,26 +382,37 @@ class DebtorService {
                     // Створюємо структуру для таблиці як у зразку
                     const tableRows = [];
                     let totalAmount = 0;
-                    let landTaxAmount = 0;
+                    let landTaxAmount = 0; // ✅ ТІЛЬКИ земельний податок
 
-                    // ✅ ЗБЕРЕЖЕНО: Вся оригінальна логіка з фільтрацією AUTO_ номерів
+                    // ✅ НОВИЙ: Обчислюємо загальну суму ВСІХ боргів спочатку
+                    const nonResidential = parseFloat(debtorData.non_residential_debt) || 0;
+                    const residential = parseFloat(debtorData.residential_debt) || 0;
+                    const landDebt = parseFloat(debtorData.land_debt) || 0;
+                    const orenda = parseFloat(debtorData.orenda_debt) || 0;
+                    const mpz = parseFloat(debtorData.mpz) || 0;
+
+                    totalAmount = nonResidential + residential + landDebt + orenda + mpz;
+
+                    // ✅ ЗБЕРЕЖЕНО: Вся оригінальна логіка з детальними кадастровими даними
                     if (detailedCadastralData && detailedCadastralData.length > 0) {
                         detailedCadastralData.forEach(item => {
                             const amount = parseFloat(item.land_tax) || 0;
                             const cadastralNumber = item.cadastral_number;
                             
-                            // ✅ ВИПРАВЛЕНО: Фільтруємо AUTO_ номери тільки для земельного податку
-                            if (amount > 0 && cadastralNumber && 
-                                !cadastralNumber.startsWith('AUTO_') && 
-                                cadastralNumber.trim() !== '' &&
-                                cadastralNumber.length > 5) {
-                                
-                                totalAmount += amount;
+                            // ✅ ВИПРАВЛЕНО: Включаємо ВСІ записи з податком > 0
+                            if (amount > 0) {
+                                // ✅ landTaxAmount - це ТІЛЬКИ земельний податок з кадастру
                                 landTaxAmount += amount;
+                                
+                                // ✅ Очищуємо кадастровий номер, але залишаємо запис
+                                const cleanCadastralNumber = (cadastralNumber && 
+                                                            !cadastralNumber.startsWith('AUTO_') && 
+                                                            cadastralNumber.trim() !== '' &&
+                                                            cadastralNumber.length > 5) ? cadastralNumber : '';
                                 
                                 tableRows.push({
                                     taxAddress: item.tax_address || debtorData.tax_address || 'Не вказано',
-                                    cadastralNumber: cadastralNumber,
+                                    cadastralNumber: cleanCadastralNumber,
                                     amount: amount.toFixed(2),
                                     debtType: 'land_debt',
                                     description: 'Земельний податок'
@@ -392,10 +420,9 @@ class DebtorService {
                             }
                         });
 
-                        // ✅ ЗБЕРЕЖЕНО: Додаємо інші типи боргів окремими рядками
+                        // ✅ ЗБЕРЕЖЕНО: Додаємо інші типи боргів окремими рядками (НЕ включаємо в landTaxAmount)
                         if (debtorData.non_residential_debt > 0) {
                             const amount = parseFloat(debtorData.non_residential_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -407,7 +434,6 @@ class DebtorService {
                         
                         if (debtorData.residential_debt > 0) {
                             const amount = parseFloat(debtorData.residential_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -419,7 +445,6 @@ class DebtorService {
                         
                         if (debtorData.orenda_debt > 0) {
                             const amount = parseFloat(debtorData.orenda_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -431,7 +456,6 @@ class DebtorService {
                         
                         if (debtorData.mpz > 0) {
                             const amount = parseFloat(debtorData.mpz);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -441,14 +465,13 @@ class DebtorService {
                             });
                         }
                     } else {
-                        // ✅ ЗБЕРЕЖЕНО: Fallback логіка з оригіналу з фільтрацією
+                        // ✅ ЗБЕРЕЖЕНО: Fallback логіка з оригіналу
                         const cadastralNumbers = debtorData.cadastral_number ? 
                             debtorData.cadastral_number.split(',').map(num => num.trim()) : [''];
                         
                         // Додаємо рядки для кожного типу боргу
                         if (debtorData.non_residential_debt > 0) {
                             const amount = parseFloat(debtorData.non_residential_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: cadastralNumbers[0] || '',
@@ -460,7 +483,6 @@ class DebtorService {
                         
                         if (debtorData.residential_debt > 0) {
                             const amount = parseFloat(debtorData.residential_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: cadastralNumbers[0] || '',
@@ -472,8 +494,8 @@ class DebtorService {
                         
                         if (debtorData.land_debt > 0) {
                             const amount = parseFloat(debtorData.land_debt);
-                            totalAmount += amount;
-                            landTaxAmount += amount;
+                            // ✅ landTaxAmount - це земельний податок з основної БД
+                            landTaxAmount = amount;
                             
                             // ✅ ВИПРАВЛЕНО: Фільтруємо AUTO_ номери для земельного податку
                             const validCadastralNumbers = cadastralNumbers.filter(num => 
@@ -507,7 +529,6 @@ class DebtorService {
                         
                         if (debtorData.orenda_debt > 0) {
                             const amount = parseFloat(debtorData.orenda_debt);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: cadastralNumbers[0] || '',
@@ -519,7 +540,6 @@ class DebtorService {
                         
                         if (debtorData.mpz > 0) {
                             const amount = parseFloat(debtorData.mpz);
-                            totalAmount += amount;
                             tableRows.push({
                                 taxAddress: debtorData.tax_address || 'Не вказано',
                                 cadastralNumber: '',
@@ -530,20 +550,9 @@ class DebtorService {
                         }
                     }
 
-                    await logRepository.createLog({
-                        row_pk_id: debtorData.id,
-                        uid: request?.user?.id,
-                        action: 'PRINT',
-                        client_addr: request?.ip,
-                        application_name: 'Друк документа',
-                        action_stamp_tx: new Date(),
-                        action_stamp_stm: new Date(),
-                        action_stamp_clk: new Date(),
-                        schema_name: 'ower',
-                        table_name: 'ower',
-                        oid: '16504',
-                    });
-                    
+                    console.log(`📊 Підрахунок сум для printDebtId: landTaxAmount=${landTaxAmount.toFixed(2)}, totalAmount=${totalAmount.toFixed(2)}`);
+
+                    // ✅ Повертаємо правильні суми
                     return reply.send({
                         name: debtorData.name,
                         date: debtorData.date,
@@ -552,8 +561,8 @@ class DebtorService {
                         tax_address: debtorData.tax_address,
                         // ✅ Нова структура для таблиці (для земельного податку)
                         tableRows: tableRows,
-                        landTaxAmount: landTaxAmount.toFixed(2),
-                        totalAmount: totalAmount.toFixed(2),
+                        landTaxAmount: landTaxAmount.toFixed(2), // ТІЛЬКИ земельний податок
+                        totalAmount: totalAmount.toFixed(2),     // ВСІ борги
                         // ✅ ЗБЕРЕЖЕНО: Залишаємо стару структуру для сумісності
                         debt: addRequisiteToLandDebt(debtorData, fetchRequisite[0])
                     });

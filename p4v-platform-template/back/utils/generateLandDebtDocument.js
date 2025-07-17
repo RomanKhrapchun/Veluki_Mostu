@@ -6,8 +6,8 @@ const fs = require('fs').promises;
  * @param {Object} debtorData - Дані боржника
  * @param {Object} requisiteData - Реквізити організації
  * @param {Array} tableRows - Рядки для основної таблиці
- * @param {Number} landTaxAmount - Сума земельного податку
- * @param {Number} totalAmount - Загальна сума
+ * @param {Number} landTaxAmount - Сума ТІЛЬКИ земельного податку
+ * @param {Number} totalAmount - Загальна сума (земельний + всі інші борги)
  * @returns {Buffer} - Буфер згенерованого документа
  */
 async function generateLandDebtDocument(debtorData, requisiteData, tableRows, landTaxAmount, totalAmount) {
@@ -40,7 +40,7 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
                 properties: {
                     page: {
                         margin: {
-                            top: 1440,    // 1 inch
+                            top: 720,     // ✅ ЗМЕНШЕНО: 0.5 inch замість 1 inch
                             right: 1440,  // 1 inch
                             bottom: 1440, // 1 inch
                             left: 1440,   // 1 inch
@@ -48,18 +48,18 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
                     },
                 },
                 children: [
-                    // ✅ 1. ПІБ та ІПН справа
+                    // ✅ ПІБ справа
                     new Paragraph({
                         children: [
                             new TextRun({
                                 text: debtorData.name?.toUpperCase() || 'НЕ ВКАЗАНО',
                                 bold: true,
-                                size: 24,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                         ],
-                        alignment: AlignmentType.RIGHT, // ✅ Змінено на RIGHT
-                        spacing: { after: 200 },
+                        alignment: AlignmentType.RIGHT,
+                        spacing: { after: 0 }, // ✅ МІНІМАЛЬНИЙ відступ
                     }),
 
                     // ✅ Ідентифікаційний код справа
@@ -68,26 +68,26 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
                             new TextRun({
                                 text: `і.к. ${maskedId}`,
                                 bold: true,
-                                size: 24,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                         ],
-                        alignment: AlignmentType.RIGHT, // ✅ Змінено на RIGHT
-                        spacing: { after: 400 },
+                        alignment: AlignmentType.RIGHT,
+                        spacing: { after: 120 }, // ✅ МІНІМАЛЬНИЙ відступ
                     }),
 
-                    // Назва документа (залишається по центру)
+                    // Назва документа
                     new Paragraph({
                         children: [
                             new TextRun({
                                 text: 'Інформаційне повідомлення',
                                 bold: true,
-                                size: 24,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                         ],
                         alignment: AlignmentType.CENTER,
-                        spacing: { after: 400 },
+                        spacing: { after: 120 }, // ✅ МІНІМАЛЬНИЙ відступ
                     }),
 
                     // Вступний текст
@@ -95,30 +95,30 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
                         children: [
                             new TextRun({
                                 text: `     Великомостівська міська рада повідомляє, що відповідно до даних ГУ ДПС у Львівській області, станом ${currentDate} у Вас наявна заборгованість до бюджету Великомостівської міської територіальної громади, а саме:`,
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                         ],
-                        spacing: { after: 400 },
+                        spacing: { after: 120 }, // ✅ МІНІМАЛЬНИЙ відступ
                         alignment: AlignmentType.JUSTIFIED,
                     }),
 
-                    // ✅ Основна таблиця з виправленими шрифтами
+                    // ✅ Основна таблиця з правильною шириною
                     ...generateMainTable(filteredTableRows),
 
-                    // ✅ Підсумкова секція (компактніша)
+                    // ✅ Підсумкова секція з правильними розмірами
                     ...generateSummarySection(landTaxAmount, totalAmount),
 
-                    // ✅ 4. Текст після таблички (компактніший)
+                    // ✅ Текст після таблички
                     new Paragraph({
                         children: [
                             new TextRun({
                                 text: 'В разі виникнення питань по даній заборгованості, звертайтесь у ГУ ДПС у Львівській області за номером телефона (03234) 4-18-80.',
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                         ],
-                        spacing: { before: 300, after: 200 }, // ✅ Зменшено відступи
+                        spacing: { before: 240, after: 120 }, // ✅ ЗМЕНШЕНО відступи
                         alignment: AlignmentType.JUSTIFIED,
                     }),
 
@@ -126,11 +126,11 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
                         children: [
                             new TextRun({
                                 text: 'Просимо терміново погасити утворену Вами заборгованість до бюджету Великомостівської міської територіальної громади. Несвоєчасна сплата суми заборгованості призведе до нарахувань штрафних санкцій та пені.',
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                         ],
-                        spacing: { after: 200 }, // ✅ Зменшено відступ
+                        spacing: { after: 120 }, // ✅ ЗМЕНШЕНО відступ
                         alignment: AlignmentType.JUSTIFIED,
                     }),
 
@@ -138,39 +138,39 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
                         children: [
                             new TextRun({
                                 text: 'Перевірити заборгованість можна у застосунках «Портал місцевих податків Великомостівської громади» ',
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                             new TextRun({
                                 text: 'https://velykimosty.skydatagroup.com/',
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                                 underline: {},
                                 color: "0000FF",
                             }),
                             new TextRun({
                                 text: ' або через чат-бот в Telegram «Місцеві податки Великомостівської ТГ» ',
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                             new TextRun({
                                 text: 'https://t.me/Velykimosty_taxes_bot',
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                                 underline: {},
                                 color: "0000FF",
                             }),
                             new TextRun({
                                 text: '. Вони дозволяють отримати актуальну інформацію щодо стану вашої заборгованості та оплатити її онлайн за допомогою QR-коду, що розміщений нижче.',
-                                size: 22,
+                                size: 26, // 13pt
                                 font: "Times New Roman",
                             }),
                         ],
-                        spacing: { after: 300 }, // ✅ Зменшено відступ
+                        spacing: { after: 240 }, // ✅ ЗМЕНШЕНО відступ
                         alignment: AlignmentType.JUSTIFIED,
                     }),
 
-                    // ✅ 5. QR-код справа
+                    // ✅ QR-код справа
                     new Paragraph({
                         children: [
                             new ImageRun({
@@ -181,8 +181,8 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
                                 },
                             }),
                         ],
-                        alignment: AlignmentType.RIGHT, // ✅ Змінено на RIGHT
-                        spacing: { before: 200 },
+                        alignment: AlignmentType.RIGHT,
+                        spacing: { before: 120 }, // ✅ ЗМЕНШЕНО відступ
                     }),
                 ],
             }],
@@ -200,7 +200,7 @@ async function generateLandDebtDocument(debtorData, requisiteData, tableRows, la
 }
 
 /**
- * ✅ 2. Генерує основну таблицю з правильними шрифтами
+ * ✅ Генерує основну таблицю з правильною шириною та шрифтами
  */
 function generateMainTable(tableRows) {
     if (!tableRows || !Array.isArray(tableRows) || tableRows.length === 0) {
@@ -210,9 +210,9 @@ function generateMainTable(tableRows) {
 
     return [
         new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
+            width: { size: 9648, type: WidthType.DXA }, // ✅ Повна ширина сторінки в DXA
             rows: [
-                // ✅ Заголовок таблиці з шрифтом 12
+                // ✅ Заголовок таблиці з шрифтом 12pt
                 new TableRow({
                     children: [
                         new TableCell({
@@ -222,14 +222,14 @@ function generateMainTable(tableRows) {
                                         new TextRun({
                                             text: 'Податкова адреса платника',
                                             bold: true,
-                                            size: 24, // ✅ 12pt = 24 half-points
+                                            size: 24, // 12pt
                                             font: "Times New Roman",
                                         }),
                                     ],
                                     alignment: AlignmentType.CENTER,
                                 }),
                             ],
-                            width: { size: 60, type: WidthType.PERCENTAGE },
+                            width: { size: 5789, type: WidthType.DXA }, // ✅ 60% від 9648
                             borders: {
                                 top: { style: BorderStyle.SINGLE, size: 1 },
                                 bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -244,14 +244,14 @@ function generateMainTable(tableRows) {
                                         new TextRun({
                                             text: 'Кадастровий номер',
                                             bold: true,
-                                            size: 24, // ✅ 12pt = 24 half-points
+                                            size: 24, // 12pt
                                             font: "Times New Roman",
                                         }),
                                     ],
                                     alignment: AlignmentType.CENTER,
                                 }),
                             ],
-                            width: { size: 25, type: WidthType.PERCENTAGE },
+                            width: { size: 2412, type: WidthType.DXA }, // ✅ 25% від 9648
                             borders: {
                                 top: { style: BorderStyle.SINGLE, size: 1 },
                                 bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -266,14 +266,14 @@ function generateMainTable(tableRows) {
                                         new TextRun({
                                             text: 'Нарахування',
                                             bold: true,
-                                            size: 24, // ✅ 12pt = 24 half-points
+                                            size: 24, // 12pt
                                             font: "Times New Roman",
                                         }),
                                     ],
                                     alignment: AlignmentType.CENTER,
                                 }),
                             ],
-                            width: { size: 15, type: WidthType.PERCENTAGE },
+                            width: { size: 1447, type: WidthType.DXA }, // ✅ 15% від 9648
                             borders: {
                                 top: { style: BorderStyle.SINGLE, size: 1 },
                                 bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -283,7 +283,7 @@ function generateMainTable(tableRows) {
                         }),
                     ],
                 }),
-                // ✅ Рядки з даними з шрифтом 11
+                // ✅ Рядки з даними з шрифтом 11pt
                 ...tableRows.map(row => new TableRow({
                     children: [
                         new TableCell({
@@ -292,13 +292,14 @@ function generateMainTable(tableRows) {
                                     children: [
                                         new TextRun({
                                             text: row.taxAddress || 'Не вказано',
-                                            size: 22, // ✅ 11pt = 22 half-points
+                                            size: 22, // 11pt
                                             font: "Times New Roman",
                                         }),
                                     ],
                                     alignment: AlignmentType.LEFT,
                                 }),
                             ],
+                            width: { size: 5789, type: WidthType.DXA },
                             borders: {
                                 top: { style: BorderStyle.SINGLE, size: 1 },
                                 bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -312,13 +313,14 @@ function generateMainTable(tableRows) {
                                     children: [
                                         new TextRun({
                                             text: row.cadastralNumber || '',
-                                            size: 22, // ✅ 11pt = 22 half-points
+                                            size: 22, // 11pt
                                             font: "Times New Roman",
                                         }),
                                     ],
                                     alignment: AlignmentType.CENTER,
                                 }),
                             ],
+                            width: { size: 2412, type: WidthType.DXA },
                             borders: {
                                 top: { style: BorderStyle.SINGLE, size: 1 },
                                 bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -332,13 +334,14 @@ function generateMainTable(tableRows) {
                                     children: [
                                         new TextRun({
                                             text: row.amount || '0.00',
-                                            size: 22, // ✅ 11pt = 22 half-points
+                                            size: 22, // 11pt
                                             font: "Times New Roman",
                                         }),
                                     ],
                                     alignment: AlignmentType.RIGHT,
                                 }),
                             ],
+                            width: { size: 1447, type: WidthType.DXA },
                             borders: {
                                 top: { style: BorderStyle.SINGLE, size: 1 },
                                 bottom: { style: BorderStyle.SINGLE, size: 1 },
@@ -354,42 +357,44 @@ function generateMainTable(tableRows) {
 }
 
 /**
- * ✅ Генерує компактнішу підсумкову секцію
+ * ✅ Генерує підсумкову секцію з правильними розмірами та Bold
  */
 function generateSummarySection(landTaxAmount, totalAmount) {
     return [
+        // ✅ Заборгованість з земельного податку (ТІЛЬКИ земельний податок)
         new Paragraph({
             children: [
                 new TextRun({
                     text: `Заборгованість з земельного податку з фіз. осіб на суму `,
-                    size: 22,
+                    size: 26, // 13pt
                     font: "Times New Roman",
                 }),
                 new TextRun({
                     text: `${landTaxAmount} грн.`,
-                    bold: true,
-                    size: 22,
+                    bold: true, // ✅ BOLD
+                    size: 26, // 13pt
                     font: "Times New Roman",
                 }),
             ],
-            spacing: { before: 300, after: 100 }, // ✅ Зменшено відступи
+            spacing: { before: 120, after: 0 }, // ✅ МІНІМАЛЬНІ відступи
             alignment: AlignmentType.LEFT,
         }),
+        // ✅ Загальна сума (земельний + всі інші борги)
         new Paragraph({
             children: [
                 new TextRun({
                     text: `Загальна сума: `,
-                    size: 22,
+                    size: 26, // 13pt
                     font: "Times New Roman",
                 }),
                 new TextRun({
                     text: `${totalAmount} грн`,
-                    bold: true,
-                    size: 22,
+                    bold: true, // ✅ BOLD
+                    size: 26, // 13pt
                     font: "Times New Roman",
                 }),
             ],
-            spacing: { after: 200 }, // ✅ Зменшено відступ
+            spacing: { after: 0 }, // ✅ МІНІМАЛЬНИЙ відступ
             alignment: AlignmentType.LEFT,
         })
     ];
@@ -405,7 +410,6 @@ async function getExistingQRCode() {
         return qrBuffer;
     } catch (error) {
         console.error('❌ Error reading existing QR code:', error);
-        // Повертаємо заглушку якщо файл не знайдено
         const fallbackBuffer = Buffer.from('PNG_PLACEHOLDER');
         return fallbackBuffer;
     }
