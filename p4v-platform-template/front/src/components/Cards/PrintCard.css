@@ -1,4 +1,4 @@
-/* PrintCard.css - повний файл зі стилями */
+/* PrintCard.css - повний файл зі стилями (ОРИГІНАЛ + ДОПОВНЕННЯ для земельного податку) */
 
 .print-card {
     max-width: 210mm;
@@ -47,6 +47,12 @@
     color: #666;
 }
 
+.print-card__address {
+    font-size: 12px;
+    margin: 0;
+    color: #666;
+}
+
 .print-card__title {
     text-align: center;
     font-size: 18px;
@@ -85,12 +91,124 @@
     font-weight: bold;
 }
 
-/* Стилі для таблиці земельного податку */
+.print-card__content {
+    margin-bottom: 20px;
+}
+
+.print-card__requisites {
+    margin: 10px 0;
+    padding: 8px;
+    background-color: #f9f9f9;
+    border-left: 3px solid #007bff;
+}
+
+.print-card__requisites-line {
+    margin: 0;
+    font-size: 13px;
+}
+
+.print-card__requisites-label {
+    font-weight: bold;
+}
+
+/* ===== НОВИЙ: Стилі для земельного податку (табличний формат) ===== */
+
+/* Заголовок для земельного податку */
+.print-card__header-land-tax {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.print-card__name-land-tax {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    font-family: "Times New Roman", serif;
+}
+
+.print-card__id-land-tax {
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 20px 0;
+    font-family: "Times New Roman", serif;
+}
+
+/* Основна таблиця для земельного податку */
 .print-card__land-tax-section {
-    margin: 15px 0;
+    margin: 30px 0;
 }
 
 .print-card__land-tax-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-family: "Times New Roman", serif;
+    font-size: 13px;
+}
+
+.print-card__land-tax-table th {
+    background-color: #f8f9fa;
+    border: 1px solid #000;
+    padding: 8px 12px;
+    text-align: center;
+    font-weight: bold;
+    vertical-align: middle;
+    font-size: 12px;
+}
+
+.print-card__land-tax-table td {
+    border: 1px solid #000;
+    padding: 8px 12px;
+    vertical-align: top;
+    font-size: 12px;
+}
+
+.print-card__land-tax-table td:first-child {
+    /* Податкова адреса - найширша колонка */
+    width: 60%;
+    text-align: left;
+    word-wrap: break-word;
+}
+
+.print-card__land-tax-table td:nth-child(2) {
+    /* Кадастровий номер - середня колонка */
+    width: 25%;
+    text-align: center;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.print-card__land-tax-table td:last-child {
+    /* Нарахування - вузька колонка */
+    width: 15%;
+    text-align: right;
+    font-weight: bold;
+}
+
+/* Підсумкова секція для земельного податку */
+.print-card__land-tax-summary {
+    margin: 30px 0;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-left: 4px solid #007bff;
+}
+
+.print-card__land-tax-summary p {
+    margin: 8px 0;
+    font-size: 14px;
+    font-family: "Times New Roman", serif;
+}
+
+.print-card__land-tax-summary strong {
+    font-weight: bold;
+}
+
+/* ===== КІНЕЦЬ нових стилів для земельного податку ===== */
+
+/* Стилі для звичайних таблиць (старий формат) */
+.print-card__land-tax-section .print-card__table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 15px;
@@ -98,7 +216,7 @@
     font-size: 12px;
 }
 
-.print-card__land-tax-table th {
+.print-card__table th {
     background-color: #f5f5f5;
     border: 1px solid #333;
     padding: 8px 6px;
@@ -106,102 +224,31 @@
     font-weight: bold;
     font-size: 11px;
     vertical-align: middle;
-    line-height: 1.2;
 }
 
-.print-card__land-tax-table td {
+.print-card__table td {
     border: 1px solid #333;
-    padding: 8px 6px;
+    padding: 6px 8px;
     text-align: left;
-    font-size: 10px;
-    vertical-align: top;
-    line-height: 1.2;
+    vertical-align: middle;
+    font-size: 11px;
 }
 
-/* Встановлення ширини колонок як на скріншоті */
-.print-card__land-tax-table th:nth-child(1),
-.print-card__land-tax-table td:nth-child(1) {
-    width: 20%; /* Платник */
-}
-
-.print-card__land-tax-table th:nth-child(2),
-.print-card__land-tax-table td:nth-child(2) {
-    width: 45%; /* Податкова адреса платника */
-}
-
-.print-card__land-tax-table th:nth-child(3),
-.print-card__land-tax-table td:nth-child(3) {
-    width: 20%; /* Кадастровий номер */
-}
-
-.print-card__land-tax-table th:nth-child(4),
-.print-card__land-tax-table td:nth-child(4) {
-    width: 15%; /* Нарахування */
-    text-align: right;
-}
-
-/* Реквізити */
-.print-card__requisites {
-    margin: 10px 0;
-}
-
-.print-card__requisites-line {
-    font-size: 12px;
-    margin: 0;
-    line-height: 1.3;
-}
-
-.print-card__requisites-label {
-    font-weight: bold;
-}
-
-/* Звичайна таблиця (для інших податків, коли буде реалізована) */
-.print-card__table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 10px 0;
-    font-family: "Times New Roman", serif;
-}
-
-.print-card__table-row {
-    border-bottom: 1px solid #ddd;
-}
-
-.print-card__table-cell {
-    padding: 8px;
-    border: 1px solid #333;
-    text-align: left;
-    font-size: 12px;
-    vertical-align: top;
-}
-
-.print-card__table-cell p {
-    margin: 0;
-    line-height: 1.2;
-}
-
-/* Футер */
 .print-card__footer-info {
-    margin-top: 30px;
-    font-size: 12px;
-    line-height: 1.4;
+    margin: 25px 0;
+    font-size: 13px;
 }
 
 .print-card__footer-info p {
-    margin: 10px 0;
+    margin: 8px 0;
     text-align: justify;
 }
 
 .print-card__footer-info a {
-    color: #0066cc;
-    text-decoration: none;
-}
-
-.print-card__footer-info a:hover {
+    color: #007bff;
     text-decoration: underline;
 }
 
-/* QR код секція */
 .print-card__qr-section {
     display: flex;
     align-items: center;
@@ -224,6 +271,11 @@
     font-size: 11px;
     margin: 0;
     color: #666;
+}
+
+.print-card__qr-text a {
+    color: #007bff;
+    text-decoration: none;
 }
 
 /* Дії (кнопки) */
@@ -249,8 +301,10 @@
         display: none !important;
     }
     
+    /* Табличні стилі для друку - земельний податок */
     .print-card__land-tax-table {
         page-break-inside: avoid;
+        font-size: 11px;
     }
     
     .print-card__land-tax-table th,
@@ -258,15 +312,25 @@
         border: 1px solid #000 !important;
         -webkit-print-color-adjust: exact;
         color-adjust: exact;
+        padding: 6px 8px;
     }
     
     .print-card__land-tax-table th {
-        background-color: #f5f5f5 !important;
+        background-color: #f8f9fa !important;
         -webkit-print-color-adjust: exact;
         color-adjust: exact;
     }
     
-    .print-card__table-cell {
+    .print-card__land-tax-summary {
+        page-break-inside: avoid;
+        background-color: #f8f9fa !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    /* Звичайні таблиці для друку */
+    .print-card__table th,
+    .print-card__table td {
         border: 1px solid #000 !important;
         -webkit-print-color-adjust: exact;
         color-adjust: exact;
@@ -278,6 +342,12 @@
     
     .print-card__qr-code {
         border: 1px solid #000 !important;
+    }
+    
+    .print-card__requisites {
+        background-color: #f9f9f9 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
     }
 }
 
@@ -297,8 +367,21 @@
         padding: 6px 4px;
     }
     
+    .print-card__table {
+        font-size: 10px;
+    }
+    
+    .print-card__table th,
+    .print-card__table td {
+        padding: 4px;
+    }
+    
     .print-card__actions {
         flex-direction: column;
         gap: 10px;
+    }
+    
+    .print-card__qr-section {
+        flex-direction: column;
     }
 }
