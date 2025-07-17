@@ -1,4 +1,15 @@
-/* Додайте ці стилі до існуючого PrintCard.css */
+/* PrintCard.css - повний файл зі стилями */
+
+.print-card {
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 20mm;
+    background: white;
+    font-family: "Times New Roman", serif;
+    line-height: 1.4;
+    color: #000;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
 
 .print-card__header {
     display: flex;
@@ -8,133 +19,286 @@
 }
 
 .print-card__header-spacer {
-    flex-grow: 1;
+    flex: 1;
 }
 
 .print-card__info-right {
     text-align: right;
-    min-width: 300px;
+    min-width: 250px;
 }
 
 .print-card__name {
-    font-size: 18px;
-    font-weight: bold;
-    margin: 0 0 5px 0;
-}
-
-.print-card__id {
     font-size: 16px;
     font-weight: bold;
     margin: 0 0 5px 0;
+    text-transform: uppercase;
+}
+
+.print-card__id {
+    font-size: 14px;
+    margin: 0 0 5px 0;
+    font-style: italic;
 }
 
 .print-card__cadastral {
-    font-size: 14px;
-    font-style: italic;
+    font-size: 12px;
     margin: 0;
+    font-style: italic;
+    color: #666;
 }
 
 .print-card__title {
     text-align: center;
     font-size: 18px;
     font-weight: bold;
-    margin: 20px 0;
+    margin: 30px 0 20px 0;
+    text-transform: uppercase;
 }
 
 .print-card__main-text {
     margin-bottom: 20px;
-}
-
-.print-card__main-text p {
-    text-indent: 1.27cm; /* Відступ першого рядка як у Word */
-    margin: 0 0 10px 0;
-    line-height: 1.4;
+    text-align: justify;
+    font-size: 14px;
 }
 
 .print-card__debt-section {
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+}
+
+.print-card__debt-text {
+    margin-bottom: 15px;
 }
 
 .print-card__debt-main {
-    text-indent: 1.27cm; /* Відступ першого рядка */
-    margin: 0 0 10px 0;
-    line-height: 1.4;
+    font-size: 14px;
+    margin: 0 0 8px 0;
+    text-align: justify;
 }
 
 .print-card__tax-address {
-    text-indent: 1.27cm; /* Додаємо відступ першого рядка */
-    margin: 10px 0;
-    line-height: 1.4;
+    font-size: 13px;
+    margin: 5px 0;
+    color: #333;
 }
 
 .print-card__tax-label {
     font-weight: bold;
 }
 
+/* Стилі для таблиці земельного податку */
+.print-card__land-tax-section {
+    margin: 15px 0;
+}
+
+.print-card__land-tax-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+    font-family: "Times New Roman", serif;
+    font-size: 12px;
+}
+
+.print-card__land-tax-table th {
+    background-color: #f5f5f5;
+    border: 1px solid #333;
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 11px;
+    vertical-align: middle;
+    line-height: 1.2;
+}
+
+.print-card__land-tax-table td {
+    border: 1px solid #333;
+    padding: 8px 6px;
+    text-align: left;
+    font-size: 10px;
+    vertical-align: top;
+    line-height: 1.2;
+}
+
+/* Встановлення ширини колонок як на скріншоті */
+.print-card__land-tax-table th:nth-child(1),
+.print-card__land-tax-table td:nth-child(1) {
+    width: 20%; /* Платник */
+}
+
+.print-card__land-tax-table th:nth-child(2),
+.print-card__land-tax-table td:nth-child(2) {
+    width: 45%; /* Податкова адреса платника */
+}
+
+.print-card__land-tax-table th:nth-child(3),
+.print-card__land-tax-table td:nth-child(3) {
+    width: 20%; /* Кадастровий номер */
+}
+
+.print-card__land-tax-table th:nth-child(4),
+.print-card__land-tax-table td:nth-child(4) {
+    width: 15%; /* Нарахування */
+    text-align: right;
+}
+
+/* Реквізити */
 .print-card__requisites {
     margin: 10px 0;
 }
 
 .print-card__requisites-line {
-    text-indent: 1.27cm; /* Додаємо відступ першого рядка */
+    font-size: 12px;
     margin: 0;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 .print-card__requisites-label {
     font-weight: bold;
 }
 
-.print-card__footer-info {
-    margin-top: 20px;
+/* Звичайна таблиця (для інших податків, коли буде реалізована) */
+.print-card__table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-family: "Times New Roman", serif;
 }
 
-.print-card__footer-info p {
-    text-indent: 1.27cm; /* Відступ першого рядка */
-    margin: 0 0 15px 0;
+.print-card__table-row {
+    border-bottom: 1px solid #ddd;
+}
+
+.print-card__table-cell {
+    padding: 8px;
+    border: 1px solid #333;
+    text-align: left;
+    font-size: 12px;
+    vertical-align: top;
+}
+
+.print-card__table-cell p {
+    margin: 0;
+    line-height: 1.2;
+}
+
+/* Футер */
+.print-card__footer-info {
+    margin-top: 30px;
+    font-size: 12px;
     line-height: 1.4;
 }
 
-/* Приховуємо кнопки при друку */
-.print-card__buttons {
+.print-card__footer-info p {
+    margin: 10px 0;
+    text-align: justify;
+}
+
+.print-card__footer-info a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.print-card__footer-info a:hover {
+    text-decoration: underline;
+}
+
+/* QR код секція */
+.print-card__qr-section {
     display: flex;
-    justify-content: flex-start; /* Змінено з center на flex-start для розташування зліва */
-    gap: 20px;
+    align-items: center;
+    justify-content: center;
     margin-top: 20px;
+    gap: 15px;
+}
+
+.print-card__qr-code {
+    width: 80px;
+    height: 80px;
+    border: 1px solid #ddd;
+}
+
+.print-card__qr-info {
+    text-align: left;
+}
+
+.print-card__qr-text {
+    font-size: 11px;
+    margin: 0;
+    color: #666;
+}
+
+/* Дії (кнопки) */
+.print-card__actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 20px;
 }
 
 /* Стилі для друку */
 @media print {
-    .print-card__buttons {
-        display: none !important; /* Приховуємо кнопки при друку */
-    }
-    
-    .print-card__header {
-        display: flex;
-        justify-content: space-between;
-    }
-    
-    .print-card__info-right {
-        text-align: right;
-    }
-    
-    .print-card__main-text p,
-    .print-card__debt-main,
-    .print-card__tax-address,
-    .print-card__requisites-line,
-    .print-card__footer-info p {
-        text-indent: 1.27cm;
-    }
-    
-    /* Додаткове форматування для друку */
-    body {
-        margin: 0;
-        padding: 20px;
-    }
-    
     .print-card {
-        max-width: 100%;
+        max-width: none;
         margin: 0;
-        padding: 0;
+        padding: 15mm;
+        box-shadow: none;
+        page-break-after: always;
+    }
+    
+    .print-card__actions {
+        display: none !important;
+    }
+    
+    .print-card__land-tax-table {
+        page-break-inside: avoid;
+    }
+    
+    .print-card__land-tax-table th,
+    .print-card__land-tax-table td {
+        border: 1px solid #000 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .print-card__land-tax-table th {
+        background-color: #f5f5f5 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .print-card__table-cell {
+        border: 1px solid #000 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .print-card__footer-info a {
+        color: #000 !important;
+    }
+    
+    .print-card__qr-code {
+        border: 1px solid #000 !important;
+    }
+}
+
+/* Адаптивність */
+@media screen and (max-width: 768px) {
+    .print-card {
+        padding: 15px;
+        margin: 10px;
+    }
+    
+    .print-card__land-tax-table {
+        font-size: 10px;
+    }
+    
+    .print-card__land-tax-table th,
+    .print-card__land-tax-table td {
+        padding: 6px 4px;
+    }
+    
+    .print-card__actions {
+        flex-direction: column;
+        gap: 10px;
     }
 }

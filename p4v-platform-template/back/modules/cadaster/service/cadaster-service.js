@@ -1,78 +1,45 @@
-const cadasterRepository = require('../repository/cadaster-repository');
-const logRepository = require('../../log/repository/log-repository');
-const { displayCadasterFields } = require('../../../utils/constants');
-const { fieldsListMissingError, NotFoundErrorMessage } = require('../../../utils/messages');
-const { paginationData } = require('../../../utils/function');
+const cadasterRepository = require("../repository/cadaster-repository");
+const { fieldsListMissingError, NotFoundErrorMessage } = require("../../../utils/messages")
+const { paginate, paginationData } = require("../../../utils/function");
+const { displayCadasterFields, allowedCadasterTableFilterFields, allowedCadasterSortFields } = require("../../../utils/constants");
+const logRepository = require("../../log/repository/log-repository");
+const xlsx = require('xlsx');
 
 class CadasterService {
 
     async findCadasterByFilter(request) {
-        const page = request?.body?.page || 1;
-        const limit = request?.body?.limit || 16;
-        const title = request?.body?.title || null; // ✅ ЗМІНЕНО: title замість search
-        const sortBy = request?.body?.sort_by || 'id';
-        const sortDirection = request?.body?.sort_direction || 'desc';
+        const { 
+            page = 1, 
+            limit = 16, 
+            title, 
+            sort_by = null, 
+            sort_direction = 'asc',
+            ...whereConditions 
+        } = request.body;
         
-        // Умови фільтрування
-        const whereConditions = {};
-        
-        // Фільтрування за ПІБ платника
-        if (request?.body?.payer_name) {
-            whereConditions.payer_name = request.body.payer_name;
-        }
-        
-        // Фільтрування за адресою платника
-        if (request?.body?.payer_address) {
-            whereConditions.payer_address = request.body.payer_address;
-        }
-        
-        // Фільтрування за податковою адресою платника
-        if (request?.body?.tax_address) {
-            whereConditions.tax_address = request.body.tax_address;
-        }
-        
-        // Фільтрування за кадастровим номером
-        if (request?.body?.cadastral_number) {
-            whereConditions.cadastral_number = request.body.cadastral_number;
-        }
-        
-        // Фільтрування за IBAN
-        if (request?.body?.iban) {
-            whereConditions.iban = request.body.iban;
-        }
-
-        if (!Object.keys(displayCadasterFields).length) {
-            throw new Error(fieldsListMissingError);
-        }
+        const { offset } = paginate(page, limit)
+        const isValidSortField = sort_by && allowedCadasterSortFields.includes(sort_by);
+        const isValidSortDirection = ['asc', 'desc'].includes(sort_direction?.toLowerCase());
+    
+        const validSortBy = isValidSortField ? sort_by : 'payer_name';
+        const validSortDirection = isValidSortDirection ? sort_direction.toLowerCase() : 'asc';
 
         try {
-            console.log('🔍 Cadaster filter request:', {
-                page,
-                limit,
-                title, // ✅ ЗМІНЕНО: title замість search
-                whereConditions,
-                sortBy,
-                sortDirection
-            });
-
-            // ✅ ВИПРАВЛЕНО: Правильний порядок параметрів
-            const offset = (page - 1) * limit;
             const cadasterData = await cadasterRepository.findCadasterByFilter(
                 limit, 
                 offset, 
-                title, // ✅ ЗМІНЕНО: title замість search
+                title, 
                 whereConditions, 
-                displayCadasterFields,
-                sortBy,
-                sortDirection
+                displayCadasterFields, 
+                validSortBy, 
+                validSortDirection
             );
 
-            // ✅ ВИПРАВЛЕНО: Змінено умову логування
             if (Object.keys(whereConditions).length > 0 || title) {
                 await logRepository.createLog({
                     row_pk_id: null,
                     uid: request?.user?.id,
-                    action: 'SEARCH', // Змінено з 'SELECT' на 'SEARCH'
+                    action: 'SEARCH',
                     client_addr: request?.ip,
                     application_name: `Фільтрування кадастрових записів`,
                     action_stamp_tx: new Date(),
@@ -164,7 +131,8 @@ class CadasterService {
                 land_tax: request.body.land_tax,
                 tax_address: request.body.tax_address,
                 cadastral_number: request.body.cadastral_number,
-                editor_id: request?.user?.id
+                editor_id: request?.user?.id,
+                editor_date: new Date()
             };
 
             const result = await cadasterRepository.updateCadasterById(request?.params?.id, cadasterData);
@@ -215,13 +183,90 @@ class CadasterService {
         }
     }
 
-    // Додатковий метод для отримання кадастрових номерів по ПІБ (для debtor модуля)
+    // СТАРА ФУНКЦІЯ (для сумісності)
     async getCadastralNumberByPayerName(payerName) {
         try {
             return await cadasterRepository.getCadastralNumberByPayerName(payerName);
         } catch (error) {
             console.error('❌ Error in getCadastralNumberByPayerName:', error);
             return null;
+        }
+    }
+
+    // НОВА ФУНКЦІЯ: отримання всіх кадастрових даних для ПІБ
+    async getAllCadastralDataByPayerName(payerName) {
+        try {
+            console.log(`🔍 Отримання всіх кадастрових даних для: ${payerName}`);
+            const result = await cadasterRepository.getAllCadastralDataByPayerName(payerName);
+            
+            console.log(`📊 Результат для ${payerName}:`, {
+                кадастрових_номерів: result.cadastralNumbers?.length || 0,
+                загальний_податок: result.totalLandTax || 0,
+                податкова_адреса: result.taxAddress ? 'є' : 'немає'
+            });
+            
+            return result;
+        } catch (error) {
+            console.error('❌ Error in getAllCadastralDataByPayerName:', error);
+            return {
+                cadastralNumbers: [],
+                totalLandTax: 0,
+                taxAddress: null,
+                plotArea: 0
+            };
+        }
+    }
+
+    // Метод для масового завантаження
+    async bulkUpload(request) {
+        try {
+            // Логіка обробки Excel файлу буде тут
+            console.log('🔄 Початок масового завантаження кадастрових записів');
+            
+            if (!request.file) {
+                throw new Error('Файл не знайдено');
+            }
+
+            // Обробка Excel файлу
+            const workbook = xlsx.read(request.file.buffer, { type: 'buffer' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const jsonData = xlsx.utils.sheet_to_json(worksheet);
+
+            console.log(`📄 Знайдено ${jsonData.length} записів у файлі`);
+
+            // Конвертуємо дані у формат для бази
+            const cadasterArray = jsonData.map(row => ({
+                payer_name: row['ПІБ Платника'] || row['payer_name'],
+                payer_address: row['Адреса платника'] || row['payer_address'],
+                iban: row['IBAN'] || row['iban'],
+                plot_area: parseFloat(row['Площа діляки']) || parseFloat(row['plot_area']) || 0,
+                land_tax: parseFloat(row['Земельний податок']) || parseFloat(row['land_tax']) || 0,
+                tax_address: row['Податкова адреса'] || row['tax_address'],
+                cadastral_number: row['Кадастровий номер'] || row['cadastral_number'],
+                uid: request?.user?.id
+            }));
+
+            const result = await cadasterRepository.bulkCreateCadaster(cadasterArray);
+
+            await logRepository.createLog({
+                row_pk_id: null,
+                uid: request?.user?.id,
+                action: 'BULK_INSERT',
+                client_addr: request?.ip,
+                application_name: `Масове завантаження кадастрових записів (${result.imported}/${result.total})`,
+                action_stamp_tx: new Date(),
+                action_stamp_stm: new Date(),
+                action_stamp_clk: new Date(),
+                schema_name: 'ower',
+                table_name: 'cadaster_records',
+                oid: '16504',
+            });
+
+            return result;
+        } catch (error) {
+            console.error('❌ Error in bulkUpload:', error);
+            throw error;
         }
     }
 }

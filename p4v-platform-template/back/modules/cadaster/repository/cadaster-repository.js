@@ -1,56 +1,44 @@
 const { sqlRequest } = require("../../../helpers/database");
-const { buildWhereCondition } = require("../../../utils/function");
+const { buildCadasterWhereCondition } = require("../../../utils/function");
 
 class CadasterRepository {
 
-    async findCadasterByFilter(limit, offset, title, whereConditions = {}, displayFields = [], sortBy = 'id', sortDirection = 'desc') {
-        const { getSafeCadasterSortField, validateSortDirection } = require("../../../utils/constants");
+    async findCadasterByFilter(limit, offset, title, whereConditions = {}, displayFields = [], sortBy = 'payer_name', sortDirection = 'asc') {
         const values = [];
         
-        // Валідуємо параметри сортування з безпечними значеннями за замовчуванням
-        const safeSortField = getSafeCadasterSortField ? getSafeCadasterSortField(sortBy) : (sortBy || 'id');
-        const safeSortDirection = validateSortDirection ? validateSortDirection(sortDirection) : (sortDirection || 'desc');
+        const safeSortField = ['payer_name', 'payer_address', 'iban', 'plot_area', 'land_tax', 'tax_address', 'cadastral_number', 'id']
+            .includes(sortBy) ? sortBy : 'payer_name';
+        const safeSortDirection = ['asc', 'desc'].includes(sortDirection?.toLowerCase()) ? sortDirection.toLowerCase() : 'asc';
         
-        console.log('🔄 Repository sorting params:', { sortBy, sortDirection, safeSortField, safeSortDirection });
+        const displayFieldsList = displayFields.map(field => `${field}`).join(', ');
         
-        let sql = `SELECT json_agg(rw) as data, 
-                   max(cnt) as count 
-                   FROM (
-                       SELECT json_build_object(${displayFields.map(field => `'${field}', ${field}`).join(', ')}) as rw,
-                       count(*) over () as cnt
-                       FROM ower.cadaster_records
-                       WHERE 1=1`;
+        const totalCountSql = `select count(*) as count from ower.cadaster_records where 1=1`;
+        
+        let sql = `select json_agg(json_build_object(${displayFields.map(field => `'${field}', ${field}`).join(', ')})) as data,
+                max(cnt) as count
+                from (
+                select *,
+                count(*) over () as cnt
+                from ower.cadaster_records
+                where 1=1`;
 
-        // ✅ ВИПРАВЛЕНО: Використовуємо спеціальну функцію для cadaster
         if (Object.keys(whereConditions).length) {
             const data = this.buildCadasterWhereCondition(whereConditions);
             sql += data.text;
             values.push(...data.value);
         }
 
-        // ✅ ДОДАНО: Загальний пошук по title (як в debtor)
         if (title) {
-            sql += ` AND (payer_name ILIKE ? OR cadastral_number ILIKE ? OR payer_address ILIKE ? OR tax_address ILIKE ?)`;
-            values.push(`%${title}%`, `%${title}%`, `%${title}%`, `%${title}%`);
+            sql += ` and payer_name ILIKE ?`;
+            values.push(`%${title}%`);
         }
 
-        // Додаємо сортування
-        if (sortBy === 'payer_name') {
-            // Сортування по імені без урахування регістру
-            sql += ` ORDER BY LOWER(payer_name) ${safeSortDirection.toUpperCase()}`;
-        } else {
-            // Стандартне сортування
-            sql += ` ORDER BY ${safeSortField} ${safeSortDirection.toUpperCase()}`;
-        }
+        sql += ` order by ${safeSortField} ${safeSortDirection.toUpperCase()}`;
         
-        // Вторинне сортування для стабільності
-        if (sortBy !== 'id') {
-            sql += `, id ${safeSortDirection.toUpperCase()}`;
-        }
-
         values.push(limit);
         values.push(offset);
-        sql += ` LIMIT ? OFFSET ? ) q`;
+        
+        sql += ` limit ? offset ? ) q`;
 
         console.log('🔍 Final SQL:', sql);
         console.log('🔍 Values:', values);
@@ -63,17 +51,14 @@ class CadasterRepository {
         }
     }
 
-    // Спеціальна функція для WHERE умов таблиці cadaster з підтримкою ILIKE
     buildCadasterWhereCondition(whereConditions) {
         const values = [];
         
-        // Фільтруємо умови, щоб уникнути null/undefined значень
         const filteredConditions = Object.keys(whereConditions).filter(key => {
             const value = whereConditions[key];
             return value !== null && value !== undefined && value !== '';
         });
 
-        // Якщо після фільтрації не залишилось умов, повертаємо порожню умову
         if (filteredConditions.length === 0) {
             return {
                 text: '',
@@ -84,7 +69,6 @@ class CadasterRepository {
         const conditions = filteredConditions.map(key => {
             const value = whereConditions[key];
             
-            // ✅ ILIKE пошук для текстових полів (нечутливий до регістру)
             if (key === 'payer_name') {
                 values.push(`%${value}%`);
                 return `payer_name ILIKE ?`;
@@ -110,19 +94,16 @@ class CadasterRepository {
                 return `iban ILIKE ?`;
             }
             
-            // Для числових полів - точне співпадіння
             if (key === 'plot_area' || key === 'land_tax') {
                 values.push(value);
                 return `${key} = ?`;
             }
             
-            // Загальний випадок - точне співпадіння
             values.push(value);
             return `${key} = ?`;
 
         }).filter(condition => condition !== null);
         
-        // Перевіряємо, чи залишились умови після обробки
         if (conditions.length === 0) {
             return {
                 text: '',
@@ -180,7 +161,7 @@ class CadasterRepository {
         }
     }
 
-    // Метод для отримання кадастрового номера по ПІБ платника
+    // СТАРИЙ МЕТОД (залишаємо для сумісності)
     async getCadastralNumberByPayerName(payerName) {
         const sql = `SELECT cadastral_number FROM ower.cadaster_records WHERE payer_name = ? ORDER BY id DESC LIMIT 1`;
         try {
@@ -189,6 +170,87 @@ class CadasterRepository {
         } catch (error) {
             console.error('❌ Database error in getCadastralNumberByPayerName:', error);
             return null;
+        }
+    }
+
+    // НОВИЙ МЕТОД: отримання всіх даних кадастру для одного ПІБ
+    async getAllCadastralDataByPayerName(payerName) {
+        const sql = `
+            SELECT 
+                cadastral_number, 
+                tax_address, 
+                land_tax,
+                plot_area,
+                payer_address
+            FROM ower.cadaster_records 
+            WHERE payer_name = ? 
+            ORDER BY id ASC
+        `;
+        try {
+            const result = await sqlRequest(sql, [payerName]);
+            
+            if (result.length === 0) {
+                return {
+                    cadastralNumbers: [],
+                    totalLandTax: 0,
+                    taxAddress: null,
+                    plotArea: 0
+                };
+            }
+
+            // Збираємо всі кадастрові номери (тільки валідні)
+            const validCadastralNumbers = result
+                .map(row => row.cadastral_number)
+                .filter(num => num && 
+                            num.trim() !== '' && 
+                            !num.startsWith('AUTO_') && 
+                            num.length > 5)
+                .filter((num, index, arr) => arr.indexOf(num) === index); // унікальні
+
+            // ВИПРАВЛЕНО: Правильне сумування з округленням
+            const totalLandTax = result
+                .reduce((sum, row) => {
+                    const landTax = parseFloat(row.land_tax) || 0;
+                    return sum + landTax;
+                }, 0);
+            
+            // Округлюємо до 2 знаків після коми
+            const roundedTotalLandTax = Math.round(totalLandTax * 100) / 100;
+
+            // ВИПРАВЛЕНО: Правильне сумування площі з округленням
+            const totalPlotArea = result
+                .reduce((sum, row) => {
+                    const plotArea = parseFloat(row.plot_area) || 0;
+                    return sum + plotArea;
+                }, 0);
+            
+            // Округлюємо площу до 4 знаків після коми
+            const roundedTotalPlotArea = Math.round(totalPlotArea * 10000) / 10000;
+
+            // Беремо першу доступну податкову адресу
+            const taxAddress = result.find(row => row.tax_address && row.tax_address.trim() !== '')?.tax_address || null;
+
+            console.log(`📊 Кадастрові дані для ${payerName}:`, {
+                записів: result.length,
+                кадастрових_номерів: validCadastralNumbers.length,
+                загальний_податок: roundedTotalLandTax,
+                загальна_площа: roundedTotalPlotArea
+            });
+
+            return {
+                cadastralNumbers: validCadastralNumbers,
+                totalLandTax: roundedTotalLandTax,
+                taxAddress: taxAddress,
+                plotArea: roundedTotalPlotArea
+            };
+        } catch (error) {
+            console.error('❌ Database error in getAllCadastralDataByPayerName:', error);
+            return {
+                cadastralNumbers: [],
+                totalLandTax: 0,
+                taxAddress: null,
+                plotArea: 0
+            };
         }
     }
 
@@ -201,10 +263,9 @@ class CadasterRepository {
 
             console.log(`📊 Початок масового вставлення ${cadasterArray.length} кадастрових записів`);
             
-            const batchSize = 100; // Обробляємо по 100 записів за раз
+            const batchSize = 100;
             let totalImported = 0;
             
-            // Розбиваємо дані на батчі для кращої продуктивності
             for (let i = 0; i < cadasterArray.length; i += batchSize) {
                 const batch = cadasterArray.slice(i, i + batchSize);
                 const batchResult = await this.insertCadasterBatch(batch);
@@ -236,7 +297,6 @@ class CadasterRepository {
                     inserted++;
                 } catch (error) {
                     console.error('❌ Помилка вставки запису:', error);
-                    // Продовжуємо обробку інших записів
                 }
             }
             

@@ -109,7 +109,21 @@ const DebtorList = () => {
                 ...(width && { width }),
                 ...(render && { render })
             });
-        
+            
+            // ДОДАНО: Функція для форматування грошових сум з кольором
+            const formatCurrencyWithColor = (value) => {
+                const numValue = Math.round((parseFloat(value) || 0) * 100) / 100;
+                return (
+                    <span style={{
+                        color: numValue > 0 ? '#e74c3c' : '#6c757d',
+                        fontWeight: numValue > 0 ? '500' : 'normal',
+                        fontSize: '12px'
+                    }}>
+                        {numValue.toFixed(2)}
+                    </span>
+                );
+            };
+
             const hasDebt = (record) => {
                 return ['mpz', 'orenda_debt', 'land_debt', 'residential_debt', 'non_residential_debt']
                     .some(field => Number(record[field]) > 0);
@@ -124,13 +138,13 @@ const DebtorList = () => {
             ];
             
             if (!selectedTaxType || selectedTaxType === '') {
-                // Якщо тип не вибраний - показуємо всі колонки
+                // Якщо тип не вибраний - показуємо всі колонки з ПРАВИЛЬНИМ форматуванням
                 columns.push(
-                    createSortableColumn('Нежитл', 'non_residential_debt', null, '70px'),
-                    createSortableColumn('Житл', 'residential_debt', null, '65px'),
-                    createSortableColumn('Земля', 'land_debt', null, '65px'),
-                    createSortableColumn('Оренда', 'orenda_debt', null, '70px'),
-                    createSortableColumn('МПЗ', 'mpz', null, '60px')
+                    createSortableColumn('Нежитл', 'non_residential_debt', formatCurrencyWithColor, '70px'),
+                    createSortableColumn('Житл', 'residential_debt', formatCurrencyWithColor, '65px'),
+                    createSortableColumn('Земля', 'land_debt', formatCurrencyWithColor, '65px'),
+                    createSortableColumn('Оренда', 'orenda_debt', formatCurrencyWithColor, '70px'),
+                    createSortableColumn('МПЗ', 'mpz', formatCurrencyWithColor, '60px')
                 );
             } else {
                 // Якщо вибраний конкретний тип - показуємо тільки його
@@ -147,7 +161,7 @@ const DebtorList = () => {
                         createSortableColumn(
                             taxTypeMapping[selectedTaxType].title, 
                             selectedTaxType, 
-                            null, 
+                            formatCurrencyWithColor, 
                             taxTypeMapping[selectedTaxType].width
                         )
                     );
@@ -155,7 +169,7 @@ const DebtorList = () => {
             }
             columns.push(
                 createSortableColumn('Всього', 'total_debt', (value) => {
-                    const numValue = Number(value) || 0;
+                    const numValue = Math.round((parseFloat(value) || 0) * 100) / 100;
                     return (
                         <span style={{
                             fontWeight: 'bold', 
@@ -166,23 +180,26 @@ const DebtorList = () => {
                         </span>
                     );
                 }, '80px'),
-                createSortableColumn('Кадастр. номер', 'cadastral_number', (value) => {
-                    const isValidCadastral = value && 
-                                            value !== null && 
-                                            value !== '' && 
-                                            !value.includes('AUTO_') && 
-                                            value.length > 5;
-                        
-                        return isValidCadastral ? (
-                            <span style={{ fontSize: '12px', color: '#666' }}>
-                                {value}
-                            </span>
-                        ) : (
-                            <span style={{ fontSize: '11px', color: '#bbb', fontStyle: 'italic' }}>
-                                Інформація не надана
-                            </span>
-                        );
-                    }, '120px'),
+                createSortableColumn('Кадастр.', 'cadastral_number', (value) => {
+                    if (!value || value.trim() === '') {
+                        return <span style={{ color: '#999', fontSize: '11px' }}>Немає</span>;
+                    }
+
+                    return (
+                        <span 
+                            title={value} 
+                            style={{ 
+                                fontSize: '9px', 
+                                color: '#333', 
+                                lineHeight: '1.2',
+                                wordBreak: 'break-all',  // Дозволяємо перенос довгих номерів
+                                display: 'block'         // Блокове відображення для кращого переносу
+                            }}
+                        >
+                            {value}
+                        </span>
+                    );
+                }, '140px'),
                 {
                     title: 'Дія',
                     dataIndex: 'action',
@@ -222,7 +239,7 @@ const DebtorList = () => {
             );
         
             return columns;
-        }, [navigate, handleSort, getSortIcon, stateDebtor.sendData.sort_by, stateDebtor.selectData?.tax_type]);
+        }, [    stateDebtor.sendData.sort_by, stateDebtor.sendData.sort_direction, stateDebtor.selectData?.tax_type, handleSort, getSortIcon, navigate]);
             /*return [
                 //createSortableColumn('ID', 'id', null, '45px'),
                 createSortableColumn('ІПН', 'identification', null, '65px'),
@@ -287,22 +304,26 @@ const DebtorList = () => {
         const tableData = useMemo(() => {
             if (data?.items?.length) {
                 const result = data?.items?.map(el => {
-                    const totalDebt = (Number(el.non_residential_debt) || 0) + 
-                                    (Number(el.residential_debt) || 0) + 
-                                    (Number(el.land_debt) || 0) + 
-                                    (Number(el.orenda_debt) || 0) + 
-                                    (Number(el.mpz) || 0);
+                    // ВИПРАВЛЕНО: Додано правильне округлення для totalDebt
+                    const nonResidential = parseFloat(el.non_residential_debt) || 0;
+                    const residential = parseFloat(el.residential_debt) || 0;
+                    const land = parseFloat(el.land_debt) || 0;
+                    const orenda = parseFloat(el.orenda_debt) || 0;
+                    const mpz = parseFloat(el.mpz) || 0;
+                    
+                    const totalDebt = Math.round((nonResidential + residential + land + orenda + mpz) * 100) / 100;
                     
                     return {
                         key: el.id,
                         id: el.id,
                         name: el.name,
                         date: el.date,
-                        non_residential_debt: el.non_residential_debt,
-                        residential_debt: el.residential_debt,
-                        land_debt: el.land_debt,
-                        orenda_debt: el.orenda_debt,
-                        mpz: el.mpz,
+                        // ВИПРАВЛЕНО: Додано округлення для кожного поля
+                        non_residential_debt: Math.round((parseFloat(el.non_residential_debt) || 0) * 100) / 100,
+                        residential_debt: Math.round((parseFloat(el.residential_debt) || 0) * 100) / 100,
+                        land_debt: Math.round((parseFloat(el.land_debt) || 0) * 100) / 100,
+                        orenda_debt: Math.round((parseFloat(el.orenda_debt) || 0) * 100) / 100,
+                        mpz: Math.round((parseFloat(el.mpz) || 0) * 100) / 100,
                         identification: el.identification,
                         total_debt: totalDebt,
                         cadastral_number: el.cadastral_number,

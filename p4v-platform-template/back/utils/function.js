@@ -229,23 +229,36 @@ const removeAfterLastSlash = (str) => {
 const addRequisiteToLandDebt = (body, requisite) => {
     const land_debt = [];
 
-    // Перевіряємо вхідні дані
-    if (!body || !requisite) {
-        console.error("❌ addRequisiteToLandDebt: відсутні вхідні дані", { body, requisite });
-        return [];
+    console.log("📌 Вхідні дані у addRequisiteToLandDebt:", body);
+
+    // Перевіряємо, чи є борг взагалі
+    const totalDebt = (parseFloat(body?.non_residential_debt) || 0) + 
+                     (parseFloat(body?.residential_debt) || 0) + 
+                     (parseFloat(body?.land_debt) || 0) + 
+                     (parseFloat(body?.orenda_debt) || 0) + 
+                     (parseFloat(body?.mpz) || 0);
+
+    if (totalDebt <= 0) {
+        console.warn("⚠️ Немає боргу або сума некоректна:", totalDebt);
+        return []; // Повертаємо порожній масив, щоб уникнути помилок
     }
 
-    const addDebtInfo = (debtText, requisiteText, recipientName, edrpou, account, code, amount) => {
-        // Створюємо новий формат для відображення реквізитів в одному рядку - ТІЛЬКИ для податків
-        const cleanRecipientName = removeAfterLastSlash(recipientName || 'Невідомий отримувач');
-        const recipientInfo = `${cleanRecipientName}, ${edrpou || 'невідомо'}, ${account || 'невідомо'}`;
+    const addDebtInfo = (debtText, requisiteText, recipientName, edrpou, account, code, amount, isLandTax = false) => {
+        // Очищуємо назву отримувача від зайвих пробілів і переносів
+        const cleanRecipientName = recipientName ? recipientName.replace(/\s+/g, ' ').trim() : 'невідомо';
         
         const debtItem = {
-            debtText: debtText || 'Невідома заборгованість',
-            requisiteText: requisiteText || 'Реквізити для оплати',
-            amount: amount || 0,
-            budgetCode: code || 'невідомо', // Додаємо код класифікації
-            recipientInfo, // Новий формат - все в одному рядку для податків
+            debtText: debtText,
+            requisiteText: requisiteText,
+            recipientInfo: cleanRecipientName,
+            // Додаємо маркер для земельного податку
+            isLandTax: isLandTax,
+            // Додаткові дані для таблиці земельного податку
+            payerName: body.payer_name || body.name || '',
+            taxAddress: body.tax_address || '',
+            // ЗМІНЕНО: Тепер cadastralNumber може містити декілька номерів через кому
+            cadastralNumber: body.cadastral_number || '',
+            amount: `${amount} грн`,
             table: [
                 {
                     label: "Отримувач",
@@ -283,7 +296,9 @@ const addRequisiteToLandDebt = (body, requisite) => {
                 requisite.non_residential_debt_edrpou,
                 requisite.non_residential_debt_account,
                 '18010300',
-                body.non_residential_debt);
+                body.non_residential_debt,
+                false // не земельний податок
+            );
         }
 
         if (body?.residential_debt > 0) {
@@ -294,11 +309,13 @@ const addRequisiteToLandDebt = (body, requisite) => {
                 requisite.residential_debt_edrpou,
                 requisite.residential_debt_account,
                 '18010200',
-                body.residential_debt);
+                body.residential_debt,
+                false // не земельний податок
+            );
         }
 
         if (body?.land_debt > 0) {
-            // Формуємо текст заборгованості БЕЗ податкової адреси (адреса буде додана окремо)
+            // ЗМІНЕНО: Формуємо текст заборгованості з урахуванням можливих множинних кадастрових номерів
             let debtText = `Заборгованість зі сплати земельному податку з фізичних осіб в сумі ${body.land_debt} грн`;
             
             // Додаємо податкову адресу до окремого рядка якщо вона є
@@ -308,6 +325,11 @@ const addRequisiteToLandDebt = (body, requisite) => {
                 debtText += '.';
             }
             
+            // ДОДАНО: Логування для відстеження кадастрових номерів
+            if (body.cadastral_number && body.cadastral_number.includes(',')) {
+                console.log(`🏠 Знайдено множинні кадастрові номери для ${body.name}: ${body.cadastral_number}`);
+            }
+            
             addDebtInfo(
                 debtText,
                 "Реквізити для оплати :",
@@ -315,7 +337,9 @@ const addRequisiteToLandDebt = (body, requisite) => {
                 requisite.land_debt_edrpou,
                 requisite.land_debt_account,
                 '18010700',
-                body.land_debt);
+                body.land_debt,
+                true // це земельний податок
+            );
         }
 
         if (body?.orenda_debt > 0) {
@@ -326,7 +350,9 @@ const addRequisiteToLandDebt = (body, requisite) => {
                 requisite.orenda_debt_edrpou,
                 requisite.orenda_debt_account,
                 '18010900',
-                body.orenda_debt);
+                body.orenda_debt,
+                false // не земельний податок
+            );
         }
 
         if (body?.mpz > 0) {
@@ -337,7 +363,9 @@ const addRequisiteToLandDebt = (body, requisite) => {
                 requisite.mpz_edrpou,
                 requisite.mpz_account,
                 '11011300',
-                body.mpz);
+                body.mpz,
+                false // не земельний податок
+            );
         }
 
         console.log("📌 addRequisiteToLandDebt result:", land_debt);
